@@ -1,0 +1,53 @@
+# ─── Node.js / Next.js ────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# npm
+npm-debug.log*
+package-lock.json.debug
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# TypeScript
+*.tsbuildinfo
+
+# ─── Python / FastAPI ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+.uv/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── IDE & OS ─────────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
