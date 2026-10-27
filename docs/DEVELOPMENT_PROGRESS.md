@@ -48,7 +48,6 @@
 | `frontend/src/app/globals.css` | Created | Complete CSS design token system (colors, typography, spacing, shadows, transitions) |
 | `frontend/src/app/layout.tsx` | Created | Root layout with page metadata ("Make My Marriage") |
 | `frontend/src/app/page.tsx` | Complete | Full platform landing page with hero, live preview, features, and role cards |
-| `frontend/src/app/landing.css` | Created | Stylesheet for landing page with animations and responsive layouts |
 
 ### 2.2 Backend Files Created
 
