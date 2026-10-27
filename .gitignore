@@ -51,3 +51,6 @@ htmlcov/
 *.swp
 *.swo
 Thumbs.db
+
+# MCP & Local Agent Config
+.agents/
