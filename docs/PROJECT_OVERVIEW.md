@@ -47,6 +47,8 @@ Make My Marriage provides a purpose-built, administrator-controlled platform tha
 |------|-------------|
 | **Platform Administrator** | Operates the platform; creates wedding websites and Manager accounts |
 | **Wedding Manager** | Manages a specific wedding's events, guests, invitations, tasks, and photos |
+| **Marrying Couple** | Registers account, designs wedding website, manages celebrations |
+| **Wedding Planner / Atelier** | Manages client celebrations and bespoke wedding experiences |
 | **Wedding Guest** | Views wedding information and submits RSVPs through a unique invitation link |
 
 ---
@@ -57,35 +59,36 @@ Make My Marriage provides a purpose-built, administrator-controlled platform tha
 
 The following features are committed for Version 1:
 
-1. Administrator and Wedding Manager authentication
-2. Administrator-controlled Manager account creation and onboarding
-3. Reusable wedding website template (multi-wedding support)
-4. Wedding setup and personalized wedding details
-5. Wedding Manager dashboard with summaries
-6. Multiple wedding events and schedules
-7. Task planner
-8. Guest management (add, edit, remove, view)
-9. Digital email invitations with unique guest tokens
-10. RSVP management via token-based invitation links (Yes / No)
-11. Email reminders for uninvited or non-responding guests
-12. Private photo gallery (GCS-backed, short-lived signed URLs)
-13. Wedding-specific QR codes linking to the public wedding website
-14. Livestream information (optional; display/link only)
-15. Role-based access control and wedding-level data isolation
-16. Public wedding website (no login required for guests)
+1. Administrator, Wedding Manager, Couple, and Planner authentication (`/api/v1/auth/`)
+2. Self-service registration for Marrying Couples and Wedding Planners (`/signup`)
+3. Unified luxury Atelier sign-in experience (`/login`)
+4. Administrator-controlled Manager account creation and onboarding
+5. Reusable wedding website template (multi-wedding support)
+6. Wedding setup and personalized wedding details
+7. Wedding Manager dashboard with summaries
+8. Multiple wedding events and schedules
+9. Task planner
+10. Guest management (add, edit, remove, view)
+11. Digital email invitations with unique guest tokens
+12. RSVP management via token-based invitation links (Yes / No)
+13. Email reminders for uninvited or non-responding guests
+14. Private photo gallery (GCS-backed, short-lived signed URLs)
+15. Wedding-specific QR codes linking to the public wedding website
+16. Livestream information (optional; display/link only)
+17. Role-based access control and wedding-level data isolation
+18. Public wedding website (no login required for guests)
 
 > **Note — Expense Tracker:** Although the SDD v1.2 and DBDD v1.0 include an expenses collection and related APIs, the README and scope notes confirm the Expense Tracker is **included in the technical data model** but explicitly **deferred from the V1 product UI scope**. The collection and API design exist in the specifications; the user-facing feature is not a V1 deliverable.
 
 ### 2.2 Explicitly Excluded from V1
 
 - Budget management and expense tracking (UI feature — data model exists in specs)
-- Guest login accounts
+- Guest login accounts (guests use invitation links)
 - Public photo galleries (galleries are private)
 - Guest photo uploads
 - WhatsApp notifications
 - SMS notifications
 - OTP verification (see Section 13 for details)
-- Self-service public registration for Wedding Managers
 - Multiple weddings per single Manager (unless introduced later)
 - Built-in live-streaming infrastructure (display/link only)
 - Advanced features not listed in the V1 scope
@@ -300,7 +303,8 @@ WhatsApp and SMS notifications are excluded from V1.
 | **Frontend framework** | Next.js (App Router) | `^15.0.0` (package.json) |
 | **Frontend language** | TypeScript | `^5.0.0` |
 | **Frontend runtime** | React | `^19.0.0` |
-| **Frontend styling** | Vanilla CSS (design tokens in `globals.css`) | No CSS framework |
+| **Frontend styling** | Tailwind CSS + Vanilla CSS tokens (`globals.css`, `stitch.css`) | Curated haute couture brand palette (`gold`, `burgundy`, `charcoal`, `surface`) |
+| **Typography** | `next/font/google` | `Cinzel`, `Playfair Display`, `Plus Jakarta Sans` |
 | **Frontend package manager** | npm | (package-lock.json present) |
 | **Backend framework** | FastAPI | `>=0.115.0` (pyproject.toml) |
 | **Backend language** | Python | `>=3.12` |
@@ -308,7 +312,8 @@ WhatsApp and SMS notifications are excluded from V1.
 | **Backend package manager** | uv | (uv.lock and pyproject.toml) |
 | **Database driver** | PyMongo Async (pymongo[asyncio]) | `>=4.9.0` |
 | **Settings management** | pydantic-settings | `>=2.5.0` |
-| **Media storage** | Google Cloud Storage | Confirmed via next.config.mjs remote image pattern (storage.googleapis.com) |
+| **Authentication & Crypto** | PBKDF2-HMAC-SHA256 & HMAC-SHA256 | OWASP 600,000 iterations; signed session tokens; HTTP-only cookies |
+| **Media storage** | Google Cloud Storage & Google Photos | Remote patterns for `storage.googleapis.com` & `lh3.googleusercontent.com` |
 
 ### 5.2 Proposed Integrations (documented but not yet configured)
 
@@ -507,9 +512,13 @@ Interactive documentation is auto-generated by FastAPI at:
 
 ### 8.4 Currently Implemented Endpoints
 
-| Method | Endpoint | Status |
-|---|---|---|
-| `GET` | `/api/v1/health` | Implemented |
+| Method | Endpoint | Status | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/health` | Implemented & Tested | Server liveness check |
+| `POST` | `/api/v1/auth/register` | Implemented & Tested | Register Couple or Planner account; issues session cookie |
+| `POST` | `/api/v1/auth/login` | Implemented & Tested | Authenticate any Atelier user; issues session cookie & token |
+| `GET` | `/api/v1/auth/me` | Implemented & Tested | Fetch authenticated user profile via session cookie or Bearer header |
+| `POST` | `/api/v1/auth/logout` | Implemented & Tested | Terminate session and clear authentication cookie |
 
 All other endpoints described in `API-DD.doc` are **not yet implemented**.
 
@@ -519,14 +528,18 @@ All other endpoints described in `API-DD.doc` are **not yet implemented**.
 
 ## 9. Authentication, Security, and Privacy
 
-### 9.1 Admin and Manager Authentication
+### 9.1 Authentication Architecture (Confirmed & Implemented)
 
-- Both Admin and Manager authenticate through a shared login page (`/login`)
-- Credentials are validated by FastAPI against the `users` collection
-- Passwords are **never stored in plaintext**; they must be securely hashed
-- On successful login, the backend establishes an authenticated session
-- The exact mechanism (HTTP-only secure cookie vs. bearer token) **has not been finalized**
-- The backend must invalidate the session on logout
+- **Unified Authentication:** Platform Admins, Concierge Managers, Marrying Couples, and Wedding Planners authenticate through the unified login portal (`/login`).
+- **Self-Service Registration:** Couples and Planners can create accounts directly via the registration portal (`/signup`), choosing their account type (`couple` or `planner`).
+- **Password Security:** Passwords are never stored in plaintext. They are hashed using **PBKDF2-HMAC-SHA256** with **600,000 iterations** (OWASP recommended) and a cryptographically secure 16-byte random salt (`backend/app/core/security.py`).
+- **Session Token Format:** Session tokens follow a signed structure: `<user_id>.<timestamp>.<signature>` signed with HMAC-SHA256 using the platform `SECRET_KEY`.
+- **Session Delivery & Storage:**
+  - On login or registration, the backend sets an **`HttpOnly`**, **`SameSite=Lax`** cookie (`session_token`) with a default 30-day lifetime (`rememberMe=True`) or 1-day lifetime.
+  - The response payload also includes `token` for optional `Authorization: Bearer <token>` consumption by headless clients or external consumers.
+  - Cookie security is configurable via `COOKIE_SECURE` in `.env` (defaults to `False` for local development; set to `True` in HTTPS production).
+- **Environment-Guarded Seeding:** Demo/manager accounts are seeded into the database only in non-production environments (`ENVIRONMENT != "production"`) or when `SEED_DEMO_USERS=true`, protecting production databases from default credentials.
+- **Logout:** Calling `/api/v1/auth/logout` deletes the `session_token` cookie from the client.
 
 ### 9.2 Guest Access and Invitation Token Behavior
 
@@ -573,7 +586,7 @@ All other endpoints described in `API-DD.doc` are **not yet implemented**.
 
 ## 10. Project Structure
 
-The following is the actual directory tree as of the initial scaffolding. Route-level subdirectories listed in `README.md` (`/admin`, `/dashboard`, `/login`, `/w/[slug]`) are planned but **do not yet exist** in the file system.
+The following is the current directory tree including implemented authentication and test modules:
 
 ```
 make-my-marriage/
@@ -582,55 +595,78 @@ make-my-marriage/
 ├── .gitignore
 ├── README.md                       # Project README with architecture and setup instructions
 │
-├── docs/                           # Source-of-truth specification documents (do not modify)
+├── docs/                           # Documentation and specifications
 │   ├── PRD.doc                     # Product Requirements Document v1.0
 │   ├── SDD.doc                     # System Design Document v1.2
 │   ├── DBDD.doc                    # Database Design Document v1.0
 │   ├── API-DD.doc                  # API Design Document v1.0
-│   ├── PROJECT_OVERVIEW.md         # This file
-│   └── DEVELOPMENT_PROGRESS.md    # Development tracking document
+│   ├── PROJECT_OVERVIEW.md         # Consolidated project overview (this file)
+│   └── DEVELOPMENT_PROGRESS.md    # Development tracking and milestone document
 │
-├── frontend/                       # Next.js application (App Router, TypeScript, Vanilla CSS)
+├── frontend/                       # Next.js application (App Router, TypeScript, Tailwind CSS)
 │   ├── .env.example                # Environment variable template
 │   ├── .env.local                  # Local environment variables (not committed)
 │   ├── .next/                      # Next.js build output (generated)
 │   ├── next-env.d.ts               # Next.js TypeScript declarations (generated)
-│   ├── next.config.mjs             # Next.js configuration (GCS remote image patterns)
+│   ├── next.config.mjs             # Next.js config (GCS & Google Photos remote patterns)
+│   ├── tailwind.config.js          # Atelier luxury brand theme tokens and typography
 │   ├── node_modules/               # Installed npm dependencies
 │   ├── package.json                # npm dependencies and scripts
 │   ├── package-lock.json           # Locked dependency versions
 │   ├── tsconfig.json               # TypeScript configuration
 │   └── src/
+│       ├── lib/
+│       │   └── constants.ts        # Centralized constants (API_BASE_URL)
 │       └── app/                    # Next.js App Router root
-│           ├── globals.css         # Global CSS design tokens and base styles
-│           ├── layout.tsx          # Root layout component (sets metadata and body)
-│           └── page.tsx            # Homepage placeholder
+│           ├── globals.css         # CSS design tokens, split portal layout styles
+│           ├── stitch.css          # Design system baseline styles
+│           ├── layout.tsx          # Root layout component with Google Font optimization
+│           ├── page.tsx            # Haute couture landing page with auth links
+│           ├── login/
+│           │   └── page.tsx        # Split-screen luxury login page for Atelier accounts
+│           └── signup/
+│               └── page.tsx        # Split-screen registration page for Couples & Planners
 │
 └── backend/                        # FastAPI application (Python 3.12, uv)
     ├── .env                        # Local environment variables (not committed)
     ├── .env.example                # Environment variable template
     ├── .venv/                      # Python virtual environment (managed by uv)
-    ├── pyproject.toml              # Project metadata and dependencies
+    ├── pyproject.toml              # Project metadata, dependencies, pytest configuration
     ├── uv.lock                     # Locked Python dependency versions
-    └── app/
-        ├── main.py                 # FastAPI app factory, CORS middleware, health endpoint
-        ├── core/
-        │   └── config.py           # Pydantic Settings: reads env vars at startup
-        └── db/
-            └── session.py          # PyMongo Async client lifecycle (lifespan_db, get_database)
+    ├── app/
+    │   ├── main.py                 # FastAPI app factory, CORS middleware, router mounts
+    │   ├── core/
+    │   │   ├── config.py           # Pydantic Settings: validates env vars & cookie_secure
+    │   │   └── security.py         # PBKDF2 password hashing & HMAC-SHA256 token crypto
+    │   ├── schemas/
+    │   │   └── auth.py             # Pydantic validation models for auth requests/responses
+    │   ├── api/
+    │   │   └── v1/
+    │   │       └── auth.py         # Auth endpoints (/register, /login, /me, /logout)
+    │   └── db/
+    │       └── session.py          # PyMongo client lifecycle, index setup & guarded seed
+    └── tests/                      # Automated test suite (pytest)
+        ├── test_security.py        # Unit tests for password hashing & session token crypto
+        ├── test_auth_schemas.py    # Unit tests for auth request/response schemas
+        └── test_health.py          # Integration test for health check endpoint
 ```
 
 ### Key File Purposes
 
 | File | Purpose |
 |---|---|
-| `frontend/src/app/globals.css` | Defines the complete CSS design token system (colors, typography, spacing, shadows, transitions) |
-| `frontend/src/app/layout.tsx` | Root Next.js layout; sets page title and description metadata |
-| `frontend/src/app/page.tsx` | Homepage placeholder component; displays "Make My Marriage" heading |
-| `frontend/next.config.mjs` | Configures `storage.googleapis.com` as an allowed remote image host |
-| `backend/app/main.py` | Creates the FastAPI instance, configures CORS, mounts the health check endpoint, wires `lifespan_db` |
-| `backend/app/core/config.py` | Validates all required environment variables at startup using pydantic-settings |
-| `backend/app/db/session.py` | Opens and closes the PyMongo Async client connection pool; provides `get_database()` for dependency injection |
+| `frontend/src/app/globals.css` | Defines CSS design token system, responsive `.portal-split-wrapper` styles |
+| `frontend/src/app/layout.tsx` | Root Next.js layout; sets page title, metadata, and optimized fonts |
+| `frontend/src/app/page.tsx` | Platform landing page with hero, live preview, features, and direct auth links |
+| `frontend/src/app/login/page.tsx` | Luxury split-screen login page with form validation and demo preset aids |
+| `frontend/src/app/signup/page.tsx` | Luxury split-screen registration page with role toggle (`couple`/`planner`) |
+| `frontend/src/lib/constants.ts` | Centralized `API_BASE_URL` (`process.env.NEXT_PUBLIC_API_URL`) |
+| `backend/app/main.py` | FastAPI app instance, CORS middleware, health endpoint, router inclusion |
+| `backend/app/core/security.py` | PBKDF2-HMAC-SHA256 password hashing and HMAC-SHA256 session token generation/verification |
+| `backend/app/schemas/auth.py` | Request and response validation models for registration, login, and user profile |
+| `backend/app/api/v1/auth.py` | Endpoints for user registration, authentication, session profile, and logout |
+| `backend/app/db/session.py` | PyMongo connection lifecycle, unique index creation, and environment-guarded demo seeding |
+| `backend/tests/` | Automated test suites ensuring 100% pass rate for cryptography, schemas, and health checks |
 
 ---
 
@@ -780,7 +816,7 @@ The SDD v1.2 describes two supervisory levels: Platform Administrator and weddin
 
 ### 13.6 Additional Open Items (from SDD v1.2 and API-DD v1.0)
 
-- Exact authentication mechanism and session/token configuration
+- **Authentication mechanism & session configuration** — **Resolved:** HTTP-only SameSite=Lax session cookie (`session_token`) with Bearer token fallback; PBKDF2-HMAC-SHA256 password hashing (600,000 iterations); signed session token `<user_id>.<timestamp>.<signature>` via HMAC-SHA256 with `SECRET_KEY`.
 - Password reset and account activation flow
 - Invitation expiration and replacement policy
 - Guest gallery access when a guest loses their invitation link

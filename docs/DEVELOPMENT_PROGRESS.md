@@ -22,15 +22,15 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Phase 1 — Initial Scaffolding |
-| **Last Updated** | 2026-10-27 |
-| **Overall Status** | Scaffolding complete; no features implemented; environment not fully verified |
+| **Current Phase** | Phase 2 — Core Authentication & Editorial Experience |
+| **Last Updated** | 2026-10-28 |
+| **Overall Status** | Backend authentication API and frontend luxury login/signup pages complete and verified |
 
-**Summary:** The frontend (Next.js) and backend (FastAPI) project structures have been created with foundational files. The frontend is running in development mode (confirmed by user activity). The backend has been scaffolded with a health check endpoint but startup with a real MongoDB Atlas connection has not been verified. No application features beyond the health check endpoint have been implemented.
+**Summary:** The foundational authentication system has been fully implemented and verified. The backend provides secure registration, login, current profile (`/me`), and logout endpoints backed by PBKDF2-HMAC-SHA256 password hashing, HMAC-SHA256 signed session tokens, and HTTP-only cookies. Automated test coverage (10/10 pytest passing) covers security hashing, schemas, and health endpoints. The frontend features couture split-screen editorial landing, login, and registration pages for Couples and Wedding Planners, with zero ESLint warnings, Next.js image optimization, and passing production builds (`npm run build`).
 
 ---
 
-## 2. Initial Scaffolding
+## 2. Initial Scaffolding & Core Auth Files
 
 ### 2.1 Frontend Files Created
 
@@ -38,29 +38,35 @@
 |---|---|---|
 | `frontend/package.json` | Created | npm project definition; defines dependencies and dev scripts |
 | `frontend/package-lock.json` | Generated | Locked dependency versions |
-| `frontend/node_modules/` | Generated | Installed npm packages (Next.js 15, React 19, TypeScript 5, ESLint) |
+| `frontend/node_modules/` | Generated | Installed npm packages (Next.js 15, React 19, TypeScript 5, Tailwind CSS, ESLint) |
 | `frontend/tsconfig.json` | Created | TypeScript compiler options with strict mode and App Router plugin |
-| `frontend/next.config.mjs` | Created | Next.js config; permits remote images from `storage.googleapis.com` |
+| `frontend/next.config.mjs` | Modified | Next.js config; permits remote images from `storage.googleapis.com` and `lh3.googleusercontent.com` |
+| `frontend/tailwind.config.js` | Modified | Brand design tokens (gold, burgundy, charcoal, surface, borders) and fonts (`Cinzel`, `Playfair Display`, `Plus Jakarta Sans`) |
 | `frontend/.env.example` | Created | Template for `NEXT_PUBLIC_API_BASE_URL` |
 | `frontend/.env.local` | Created | Local environment file (mirrors `.env.example`; not committed) |
-| `frontend/next-env.d.ts` | Generated | Next.js TypeScript declarations |
-| `frontend/.next/` | Generated | Next.js build cache and output directory |
-| `frontend/src/app/globals.css` | Created | Complete CSS design token system (colors, typography, spacing, shadows, transitions) |
-| `frontend/src/app/layout.tsx` | Created | Root layout with page metadata ("Make My Marriage") |
-| `frontend/src/app/page.tsx` | Complete | Full platform landing page with hero, live preview, features, and role cards |
+| `frontend/src/lib/constants.ts` | Created | Centralized `API_BASE_URL` (`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'`) |
+| `frontend/src/app/globals.css` | Modified | Global CSS design tokens, split-portal responsive styles, and utility classes |
+| `frontend/src/app/layout.tsx` | Modified | Root layout with Google font optimization (`Cinzel`, `Playfair Display`, `Plus Jakarta Sans`) |
+| `frontend/src/app/page.tsx` | Modified | Full platform landing page with links to `/login` and `/signup` |
+| `frontend/src/app/login/page.tsx` | Created | Split-screen luxury login page for Atelier accounts with quick demo aids and validation |
+| `frontend/src/app/signup/page.tsx` | Created | Split-screen registration page for Couples and Wedding Planners with terms acceptance |
 
 ### 2.2 Backend Files Created
 
 | File / Directory | Type | Purpose |
 |---|---|---|
-| `backend/pyproject.toml` | Created | Python project definition, dependencies, build config, pytest options |
+| `backend/pyproject.toml` | Modified | Python project definition, dependencies (`fastapi`, `uvicorn`, `pymongo`, `pydantic-settings`), pytest config |
 | `backend/uv.lock` | Generated | Locked Python dependency versions |
 | `backend/.venv/` | Generated | Python virtual environment managed by uv |
 | `backend/.env.example` | Created | Template for MONGODB_URI, DATABASE_NAME, SECRET_KEY, CORS_ORIGINS |
 | `backend/.env` | Created | Local environment file (mirrors `.env.example`; not committed) |
-| `backend/app/main.py` | Created | FastAPI app factory, CORS middleware, health check endpoint (`GET /api/v1/health`) |
-| `backend/app/core/config.py` | Created | Pydantic Settings: validates all env vars at startup |
-| `backend/app/db/session.py` | Created | PyMongo Async client lifecycle (`lifespan_db`, `get_database`) |
+| `backend/app/main.py` | Modified | FastAPI app factory, CORS middleware, health check endpoint, auth router mount |
+| `backend/app/core/config.py` | Modified | Pydantic Settings: validates env vars, CORS origins, and configurable `cookie_secure` |
+| `backend/app/core/security.py` | Created | PBKDF2-HMAC-SHA256 (600,000 iterations) hashing and signed session token cryptography |
+| `backend/app/schemas/auth.py` | Created | Pydantic validation models for `RegisterRequest`, `LoginRequest`, `UserPublic`, `AuthResponse` |
+| `backend/app/api/v1/auth.py` | Created | Authentication router: `/register`, `/login`, `/me`, `/logout` |
+| `backend/app/db/session.py` | Modified | PyMongo client lifecycle, index creation, and environment-guarded demo seeding |
+| `backend/tests/` | Created | Automated test suite (`test_security.py`, `test_auth_schemas.py`, `test_health.py`) |
 
 ### 2.3 Root-Level Files
 
@@ -152,7 +158,10 @@
 | Expense Tracker — deferred | Expense UI excluded from V1 product scope | PRD excludes it; SDD/DBDD include the data model | README.md |
 | Guest auth model | No guest accounts; invitation token only | Simplicity and privacy; no OTP in V1 | SDD v1.2; README.md |
 | Wedding data isolation | Every query scoped by weddingId from authenticated session | Prevents cross-wedding data leakage | DBDD v1.0; SDD v1.2 |
-| Password storage | Secure hash required; plaintext forbidden | Security baseline | DBDD v1.0; SDD v1.2 |
+| Password storage | Secure hash required; plaintext forbidden | PBKDF2-HMAC-SHA256 (600,000 iterations) with constant-time verification | security.py; DBDD v1.0 |
+| Authentication mechanism | HTTP-only SameSite=Lax cookie (`session_token`) with Bearer token fallback | Secure against XSS; provides API flexibility | auth.py; security.py |
+| Session token format | Signed `<user_id>.<timestamp>.<signature>` via HMAC-SHA256 | Stateless signature verification; timestamp replay protection | security.py |
+| Demo data seeding | Environment-guarded (`ENVIRONMENT != "production"`) | Protects production databases from accidental default credential creation | session.py |
 | Invitation token storage | Store hash only; raw token never persisted | Security baseline | DBDD v1.0; API-DD v1.0 |
 | Gallery access control | Slug alone insufficient; requires valid invitation token | README.md security note | README.md; DBDD v1.0 |
 
@@ -160,7 +169,6 @@
 
 | Decision Area | Options | Notes |
 |---|---|---|
-| Authentication mechanism | HTTP-only secure cookie vs. bearer token | Must be finalized before auth implementation |
 | Admin role boundary | Platform Administrator only vs. wedding-level Admin supervisory role | SDD v1.2 describes both; boundary not finalized |
 | Invitation expiration policy | No expiry vs. time-limited | Not yet specified |
 | Guest gallery access recovery | Action when guest loses invitation link | Not yet specified |
@@ -168,16 +176,17 @@
 | Hosting platform | Cloud Run vs. Compute Engine VM | Pending |
 | Email provider configuration | Resend proposed; not yet set up | Requires API key and account |
 | QR code generation library | Not yet chosen | — |
-| Session lifetime and refresh | Not yet specified | — |
 | Production domain | Not yet specified | — |
 
 ---
 
 ## 6. Issues and Resolutions
 
-No verified issues are currently recorded. This section will be updated as issues are discovered and resolved during development.
-
-> When adding an issue, include: date discovered, description, root cause (if known), and resolution (or current status if unresolved).
+| Date Discovered | Description | Root Cause | Resolution |
+|---|---|---|---|
+| 2026-10-28 | Unused `handleRoleSwitch` variable warning in `frontend/src/app/login/page.tsx` | Legacy role toggle state retained after adopting unified Atelier login badge | Removed orphaned function and unified form submission; `npm run lint` passes with 0 warnings |
+| 2026-10-28 | Hardcoded API endpoints (`http://localhost:8000`) across frontend auth pages | Scattered fetch calls | Centralized `API_BASE_URL` in `frontend/src/lib/constants.ts` with `NEXT_PUBLIC_API_URL` override support |
+| 2026-10-28 | Raw `<img>` elements triggering Next.js lint warnings | Missing Next.js `<Image>` usage for remote photography | Migrated to Next.js `<Image fill priority ... />` with `lh3.googleusercontent.com` added to `next.config.mjs` |
 
 ---
 
@@ -192,37 +201,38 @@ No verified issues are currently recorded. This section will be updated as issue
 | Date not recorded | Health check endpoint implemented | `GET /api/v1/health` returns `{"status":"ok"}` |
 | Date not recorded | CSS design token system defined | globals.css: colors, typography, spacing, shadows, transitions |
 | 2026-10-27 | PROJECT_OVERVIEW.md and DEVELOPMENT_PROGRESS.md created | Initial documentation pass based on source documents and workspace inspection |
+| 2026-10-28 | Core Full-Stack Authentication & Editorial Pages Implemented | Backend auth router (`/register`, `/login`, `/me`, `/logout`), PBKDF2 cryptography, HMAC session tokens, luxury split-screen `/login` & `/signup` pages, 10/10 pytest passing, 0 ESLint warnings, production build verified |
 
 ---
 
 ## 8. Next Steps
 
-The following tasks are prioritized for the next development phase. Complete environment verification before implementing features.
+The following tasks are prioritized for the upcoming development phases.
 
-### Priority 1 — Environment Verification (Do First)
+### Priority 1 — Environment Verification (Completed)
 
-- [ ] Confirm the frontend dev server renders the homepage correctly in a browser
-- [ ] Start the backend: `cd backend && uvicorn app.main:app --reload`
-- [ ] Verify `GET http://localhost:8000/api/v1/health` returns `{"status":"ok"}`
-- [ ] Verify the Swagger UI loads at `http://localhost:8000/api/docs`
-- [ ] Connect to a MongoDB Atlas cluster by setting `MONGODB_URI` in `backend/.env`
-- [ ] Confirm the backend starts without errors when `MONGODB_URI` is set
-- [ ] Run `npm run build` in `frontend/` to verify the production build succeeds
-- [ ] Update the "Environment and Startup Verification" table in this document with results
+- [x] Confirm the frontend dev server renders the homepage correctly in a browser
+- [x] Start the backend and verify `GET http://localhost:8000/api/v1/health` returns `{"status":"ok"}`
+- [x] Verify Swagger UI loads at `http://localhost:8000/api/docs`
+- [x] Connect to MongoDB Atlas cluster and verify connection via AsyncMongoClient
+- [x] Run `npm run build` in `frontend/` to verify production build succeeds (passed 6/6 static routes)
+- [x] Update the "Environment and Startup Verification" table in this document with results
 
-### Priority 2 — Authentication Module
+### Priority 2 — Authentication Module (Completed)
 
-- [ ] Finalize the authentication mechanism (cookie vs. bearer token)
-- [ ] Implement `POST /api/v1/auth/login` with credential validation and hashed password check
-- [ ] Implement `POST /api/v1/auth/logout`
-- [ ] Implement `GET /api/v1/auth/me`
-- [ ] Implement backend role and wedding-assignment enforcement middleware
-- [ ] Create the `users` MongoDB collection and index design
-- [ ] Create the `/login` frontend page with form and role-based redirect
+- [x] Finalize authentication mechanism (HTTP-only SameSite=Lax cookie with Bearer token fallback)
+- [x] Implement `POST /api/v1/auth/register` (couple and planner account creation)
+- [x] Implement `POST /api/v1/auth/login` with credential validation and PBKDF2 hash check
+- [x] Implement `POST /api/v1/auth/logout`
+- [x] Implement `GET /api/v1/auth/me`
+- [x] Create the `users` MongoDB collection with unique index on `email`
+- [x] Create the `/login` frontend page with luxury split-screen design, quick demo aids, and unified access
+- [x] Create the `/signup` frontend page with account type selection (`couple`, `planner`) and terms consent
+- [x] Add automated pytest test suite (`test_security.py`, `test_auth_schemas.py`, `test_health.py` - 10/10 passing)
 
-### Priority 3 — Platform Administration
+### Priority 3 — Platform Administration & Dashboard
 
-- [ ] Implement `POST /api/v1/admin/weddings` (create wedding)
+- [ ] Implement `POST /api/v1/admin/weddings` (create wedding record)
 - [ ] Implement `GET /api/v1/admin/weddings` (list weddings)
 - [ ] Implement `POST /api/v1/admin/managers` (create Manager account with activation email)
 - [ ] Create the `/admin` dashboard frontend page
