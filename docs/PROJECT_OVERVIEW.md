@@ -1,825 +1,589 @@
 # Make My Marriage — Project Overview
 
-> **Purpose:** This document provides a complete, consolidated overview of the Make My Marriage project for new developers and AI coding assistants. Read this document before making significant changes. For detailed specifications, consult the original source documents in `docs/`.
+> **Document Type:** Technical & Architectural Reference  
+> **Target Audience:** Software Engineers, System Architects, and Technical Contributors joining Make My Marriage  
+> **Last Updated:** 2026-10-28  
+> **Implementation Baseline:** Dev Branch (Full-Stack Authentication & Editorial Scaffolding Verified)
 
 ---
 
 ## Table of Contents
 
 1. [Project Introduction](#1-project-introduction)
-2. [Product Scope](#2-product-scope)
-3. [User Roles and Permissions](#3-user-roles-and-permissions)
-4. [Application Features and User Flows](#4-application-features-and-user-flows)
-5. [Technology Stack](#5-technology-stack)
-6. [System Architecture](#6-system-architecture)
-7. [Database Overview](#7-database-overview)
-8. [API Overview](#8-api-overview)
-9. [Authentication, Security, and Privacy](#9-authentication-security-and-privacy)
-10. [Project Structure](#10-project-structure)
-11. [Environment Setup](#11-environment-setup)
-12. [Deployment and Scalability](#12-deployment-and-scalability)
-13. [Source Documents and Decision Notes](#13-source-documents-and-decision-notes)
+2. [Project Scope and Main Features](#2-project-scope-and-main-features)
+3. [User Roles and Access Model](#3-user-roles-and-access-model)
+4. [Technology Stack](#4-technology-stack)
+5. [System Architecture](#5-system-architecture)
+6. [Frontend Architecture](#6-frontend-architecture)
+7. [Backend Architecture](#7-backend-architecture)
+8. [Database Design and Data Management](#8-database-design-and-data-management)
+9. [Servers, Hosting, and Infrastructure](#9-servers-hosting-and-infrastructure)
+10. [API Architecture](#10-api-architecture)
+11. [Security, Privacy, and Data Isolation](#11-security-privacy-and-data-isolation)
+12. [Configuration and Environment Variables](#12-configuration-and-environment-variables)
+13. [Repository Structure](#13-repository-structure)
+14. [Local Development Setup](#14-local-development-setup)
+15. [Current Limitations and Technical Decisions](#15-current-limitations-and-technical-decisions)
 
 ---
 
 ## 1. Project Introduction
 
-**Make My Marriage** is a reusable, multi-wedding website and management platform. A single platform instance supports multiple couples, each with their own isolated wedding website and management experience.
+**Make My Marriage** is a bespoke, multi-tenant digital wedding website and event management platform. Built to serve modern couples, luxury wedding concierges, and boutique wedding ateliers, a single deployment of Make My Marriage powers multiple distinct weddings, each maintaining strict logical isolation, customizable schedules, guest records, and media galleries.
 
 ### The Problem It Solves
 
-Planning a wedding involves coordinating events, managing a guest list, sending invitations, tracking RSVPs, sharing photographs, and providing venue and logistics information — all while keeping personal guest data private. Most solutions either require technical expertise to build a custom website or rely on generic tools that do not integrate these concerns.
+Organizing high-end weddings requires orchestrating complex event timelines (e.g., Haldi, Mehendi, Sangeet, Ceremony, Reception), coordinating guest lists, dispatching personalized invitations, aggregating RSVPs, and curating photo albums. Generic event platforms lack dedicated Indian and multi-event wedding structures, whereas bespoke single-use wedding websites require redundant engineering, expensive custom hosting, and offer poor guest privacy.
 
-Make My Marriage provides a purpose-built, administrator-controlled platform that handles all of this in one place.
+Make My Marriage delivers an all-in-one, reusable, administrator-controlled platform that combines an editorial visual aesthetic with multi-event scheduling, frictionless guest RSVP workflows, and private media distribution.
 
-### Main Objectives
+### Core Goals & Intended Benefits
 
-- Provide a reusable wedding website template that multiple couples can use simultaneously.
-- Allow a Platform Administrator to onboard Wedding Managers and set up wedding websites.
-- Allow Wedding Managers to run day-to-day wedding operations from an authenticated dashboard.
-- Allow guests to access wedding information and submit RSVPs **without creating an account**.
-- Protect guest personal information and private wedding photographs.
-- Deliver a simple, accessible, mobile-friendly experience suitable for people of all ages.
+- **Multi-Wedding Reusability:** One platform instance hosts multiple weddings with isolated data boundaries (`weddingId`).
+- **Frictionless Guest Experience:** Guests view wedding details and respond to RSVPs **without creating accounts, remembering passwords, or completing SMS/OTP verifications**.
+- **Privacy by Design:** Guest contact information, RSVP statuses, and intimate wedding photographs remain strictly confidential and are never exposed via unauthenticated public endpoints.
+- **Editorial Brand Aesthetic:** An editorial haute couture visual identity using curated palettes (gold, burgundy, slate charcoal), classic serif typography, and responsive split-screen layouts.
+- **Operational Clarity:** Dedicated authenticated dashboards for Platform Administrators and Wedding Managers to track real-time planning progress, guest confirmations, and logistics tasks.
 
-### Intended Users
+### Architecture Classification
 
-| User | Description |
-|------|-------------|
-| **Platform Administrator** | Operates the platform; creates wedding websites and Manager accounts |
-| **Wedding Manager** | Manages a specific wedding's events, guests, invitations, tasks, and photos |
-| **Marrying Couple** | Registers account, designs wedding website, manages celebrations |
-| **Wedding Planner / Atelier** | Manages client celebrations and bespoke wedding experiences |
-| **Wedding Guest** | Views wedding information and submits RSVPs through a unique invitation link |
+Make My Marriage is explicitly a **reusable multi-wedding platform**, not a single-wedding website. While visitors navigate to individual public wedding portals via slug-based URLs (`/w/[slug]`), all backend models, queries, and storage buckets enforce multi-tenant separation.
 
 ---
 
-## 2. Product Scope
+## 2. Project Scope and Main Features
 
-### 2.1 V1 MVP — In Scope
+### 2.1 Core Functional Modules (Approved V1 MVP Scope)
 
-The following features are committed for Version 1:
+| Feature Module | Intended Product Scope | Implementation Status |
+|---|---|---|
+| **Platform Admin Management** | Super-admin provisioning of wedding records, manager assignment, and platform oversight. | **Planned** (Endpoints designed in `API-DD.md`; UI pending) |
+| **Wedding Manager Dashboard** | Central operational dashboard (`/dashboard`) summarizing guest headcounts, RSVP tallies, pending tasks, and event milestones. | **Planned** (Endpoints designed; UI pending) |
+| **Wedding Website Setup** | Configuration of couple names, wedding date, venue coordinates, timezone, welcome narrative, and custom URL slug. | **Planned** (Endpoints designed; UI pending) |
+| **Wedding Events & Schedules** | Timeline management of multiple sub-events (Haldi, Mehendi, Sangeet, Ceremony, Reception) with individual start/end times and public visibility flags. | **Planned** (Endpoints designed; UI pending) |
+| **Task Planner** | Operational preparation tracker with priorities (`low`, `medium`, `high`), due dates, assignee tagging, and statuses (`pending`, `completed`). | **Planned** (Endpoints designed; UI pending) |
+| **Guest Management** | Comprehensive guest list directory with contact details (email, phone) and invitation tracking statuses (`not_sent`, `sent`, `delivered`, `failed`). | **Planned** (Endpoints designed; UI pending) |
+| **Digital Invitations** | Automated dispatch of personalized digital invitation emails via Resend containing unique, single-use cryptographic invitation tokens. | **Planned** (Service integration pending) |
+| **RSVP Management** | Token-authorized RSVP confirmation (`/w/[slug]/invite/[token]`) enabling one-click Yes/No responses without login. | **Planned** (Endpoints designed; UI pending) |
+| **QR Code Generation** | Dynamic generation of QR codes directing guests to the public wedding website URL (`/w/[slug]`). | **Planned** (Library selection pending) |
+| **Private Photo Gallery** | Secure album-based photo display backed by Google Cloud Storage, accessed strictly via short-lived signed URLs. | **Planned** (GCS bucket and signing service pending) |
+| **Livestream Integration** | Optional embed or external redirect link (e.g., YouTube Live) for remote wedding attendees. | **Planned** (Data schema ready; UI pending) |
+| **Authentication & Accounts** | Multi-role user registration (`/signup`), credential authentication (`/login`), session verification (`/api/v1/auth/me`), and secure logout (`/logout`). | **Implemented & Verified** (Backend endpoints and frontend split-screen UI fully functional) |
 
-1. Administrator, Wedding Manager, Couple, and Planner authentication (`/api/v1/auth/`)
-2. Self-service registration for Marrying Couples and Wedding Planners (`/signup`)
-3. Unified luxury Atelier sign-in experience (`/login`)
-4. Administrator-controlled Manager account creation and onboarding
-5. Reusable wedding website template (multi-wedding support)
-6. Wedding setup and personalized wedding details
-7. Wedding Manager dashboard with summaries
-8. Multiple wedding events and schedules
-9. Task planner
-10. Guest management (add, edit, remove, view)
-11. Digital email invitations with unique guest tokens
-12. RSVP management via token-based invitation links (Yes / No)
-13. Email reminders for uninvited or non-responding guests
-14. Private photo gallery (GCS-backed, short-lived signed URLs)
-15. Wedding-specific QR codes linking to the public wedding website
-16. Livestream information (optional; display/link only)
-17. Role-based access control and wedding-level data isolation
-18. Public wedding website (no login required for guests)
+### 2.2 Features Explicitly Excluded from V1 Release Scope
 
-> **Note — Expense Tracker:** Although the SDD v1.2 and DBDD v1.0 include an expenses collection and related APIs, the README and scope notes confirm the Expense Tracker is **included in the technical data model** but explicitly **deferred from the V1 product UI scope**. The collection and API design exist in the specifications; the user-facing feature is not a V1 deliverable.
+To maintain engineering focus and adhere to approved design documents (`README.md`, `SDD.md`, `DBDD.md`, `API-DD.md`), the following items are **explicitly excluded** from the V1 release:
 
-### 2.2 Explicitly Excluded from V1
-
-- Budget management and expense tracking (UI feature — data model exists in specs)
-- Guest login accounts (guests use invitation links)
-- Public photo galleries (galleries are private)
-- Guest photo uploads
-- WhatsApp notifications
-- SMS notifications
-- OTP verification (see Section 13 for details)
-- Multiple weddings per single Manager (unless introduced later)
-- Built-in live-streaming infrastructure (display/link only)
-- Advanced features not listed in the V1 scope
-
-### 2.3 Future Enhancements (Not Committed)
-
-- WhatsApp and SMS notifications
-- Public or selectively shareable photo galleries
-- Guest photo uploads
-- Seating arrangements and table management
-- Vendor management
-- Budget and expense tracking (UI)
-- Advanced wedding customization
-- Multiple weddings per Manager
-- Additional guest engagement features
+1. **Expense Tracker UI:** While an `expenses` collection schema exists in `DBDD.md` for technical schema completeness, the user-facing Expense Tracker interface is **deferred from V1 scope**.
+2. **Guest Login & Account Creation:** Wedding guests never register an account or create passwords.
+3. **SMS / Phone OTP Verification:** PRD v1.0 Section 5.9 described phone OTP for RSVPs. This was officially **superseded and deferred** in SDD v1.2, DBDD v1.0, and API-DD v1.0 in favor of cryptographic token links (`/w/[slug]/invite/[token]`).
+4. **Public Photo Galleries:** Photo galleries are never publicly indexable; access requires an authorized guest invitation token.
+5. **Guest Photo Uploads:** Guests cannot upload images in V1; photo curation is restricted to Wedding Managers.
+6. **WhatsApp & SMS Notifications:** Automated messaging is restricted to email in V1; SMS/WhatsApp gateways are planned for future phases.
+7. **Custom Video Streaming Infrastructure:** Make My Marriage does not host video streams; it provides external stream links.
 
 ---
 
-## 3. User Roles and Permissions
+## 3. User Roles and Access Model
+
+The platform enforces a strict separation between authenticated operators and unauthenticated wedding guests.
+
+```mermaid
+flowchart TD
+    subgraph Authenticated Operators
+        PA[Platform Admin] -->|Full System Access| ADM["Admin Portal (/admin)"]
+        WM[Wedding Manager] -->|Scoped by weddingId| MGR["Manager Dashboard (/dashboard)"]
+        CP[Couple / Planner] -->|Self-Registered Account| ATELIER["Atelier Workspaces"]
+    end
+
+    subgraph Unauthenticated Guests
+        GUEST[Wedding Guest] -->|Public Access| PUB["Public Wedding Portal (/w/[slug])"]
+        GUEST -->|Valid Token Required| RSVP["RSVP Portal (/w/[slug]/invite/[token])"]
+        GUEST -->|Valid Token Required| GAL["Private Gallery (/w/[slug]/gallery)"]
+    end
+```
 
 ### 3.1 Platform Administrator
-
-The Platform Administrator is the top-level operational role.
-
-**Responsibilities:**
-- Create wedding websites
-- Create Manager accounts and assign them to a wedding
-- Configure initial wedding setup
-- Oversee platform-level onboarding
-- Review weddings and operations
-
-**Authentication:** Must log in with valid credentials. Uses the shared `/login` page with a role-based redirect to `/admin`.
-
-> **Open item:** The precise boundary between Platform Administrator and a wedding-level Admin supervisory role has not been finalized. See `SDD.doc` Section 4 and `README.md`.
+- **Authentication:** Authenticates with email and password via `/login`.
+- **Scope:** Global platform visibility.
+- **Responsibilities:** Provisions new wedding instances, creates Wedding Manager accounts, links managers to weddings, and monitors platform-wide system health.
 
 ### 3.2 Wedding Manager
+- **Authentication:** Authenticates with credentials via `/login`.
+- **Scope:** Strictly scoped to their assigned `weddingId`.
+- **Responsibilities:** Configures venue details, schedules events, tracks tasks, maintains the guest roster, initiates invitation dispatches, monitors RSVP counts, and uploads gallery photos.
+- **Data Isolation:** Backend queries automatically filter by `weddingId` derived from the validated session. Cross-wedding access attempts return `HTTP 403 Forbidden`.
 
-The Wedding Manager handles day-to-day operations for their assigned wedding.
+### 3.3 Marrying Couple & Wedding Planner
+- **Authentication:** Self-service registration via `/signup` with role tags `couple` or `planner`, authenticating via `/login`.
+- **Scope:** Assigned wedding workspace upon wedding provisioning.
+- **Responsibilities:** Collaborate with concierges on design preferences, review timelines, and preview guest invitations.
 
-**Responsibilities:**
-- Log in using credentials provided by the Platform Administrator
-- Manage wedding details, schedules, and venue information
-- Create and manage wedding events (Haldi, Mehendi, Sangeet, Ceremony, Reception, etc.)
-- Create and track tasks with priorities and deadlines
-- Add, edit, and remove guests
-- Send digital email invitations and reminders
-- View and manage RSVP responses
-- Upload and organize wedding photographs (by album)
-- Configure wedding location and QR code
-- Add or update livestream details
-
-**Authentication:** Must log in with valid credentials. Redirected to `/dashboard` after login. The backend must validate both role and wedding assignment for every protected operation.
-
-**Restriction:** A Manager must not access another wedding's management data.
-
-### 3.3 Wedding Guest
-
-Guests do not create accounts and do not log in.
-
-**Capabilities:**
-- View the public wedding website (`/w/[slug]`) without any authentication
-- View couple's names, wedding date, venue, and published events
-- Open their unique invitation link (`/w/[slug]/invite/[token]`)
-- Submit a Yes or No RSVP through their invitation link
-- Access the private photo gallery when holding a valid invitation token authorized for that wedding
-- View livestream information when available
-
-**Restrictions:**
-- Cannot access administrative dashboards
-- Cannot view other guests' personal information (names, phone numbers, RSVP status)
-- Cannot edit events, venues, or administrative records
-- Cannot upload photos
-- Cannot submit RSVPs without a valid invitation token
-
-**Authentication:** None required for public pages. Guest-specific actions (RSVP, gallery) require a valid invitation token validated by the backend.
-
-### 3.4 Permission Summary
-
-| Capability | Platform Admin | Manager | Guest |
-|---|---|---|---|
-| Create wedding website | Yes | No | No |
-| Create Manager account | Yes | No | No |
-| Log in to dashboard | Yes | Yes | Not required |
-| Review wedding information | Yes | Assigned wedding only | Public fields only |
-| Manage events and tasks | Platform-level | Yes (assigned wedding) | No |
-| Manage guests and invitations | Platform-level | Yes (assigned wedding) | Own invitation only |
-| Submit RSVP | No | No | Yes, via unique link |
-| Upload gallery photos | No (by default) | Yes | No |
-| View authorized gallery | As permitted | Yes | Yes, if token is valid |
-| View other guests' private data | Restricted | Assigned wedding only | No |
+### 3.4 Wedding Guest
+- **Authentication:** **None.** Guests do not create accounts, set passwords, or log in.
+- **Public Access:** Any guest or visitor can access public wedding pages (`/w/[slug]`) to view couple details, event schedules, venue locations, and livestream links.
+- **Protected Actions:**
+  - **Submitting RSVPs:** Accessible only through unique invitation links containing a cryptographic token: `/w/[slug]/invite/[token]`.
+  - **Viewing Private Galleries:** Accessible at `/w/[slug]/gallery` only when accompanied by a valid, non-revoked guest invitation token scoped to that wedding.
+- **Privacy Protections:** Guests can never view other guests' names, contact numbers, or response statuses.
 
 ---
 
-## 4. Application Features and User Flows
+## 4. Technology Stack
 
-### 4.1 Wedding Setup and Management
+### 4.1 Technology Inventory
 
-The Platform Administrator creates a wedding record with:
-- Couple names, slug (URL identifier), wedding date, timezone
-- Venue name, address, and coordinates
-- Welcome/description text
-- Manager assignment
+| Layer | Technology | Purpose | Actual Status | Codebase Evidence |
+|---|---|---|---|---|
+| **Frontend Framework** | Next.js 15.0.0 (App Router) | Server-side rendering, client routing, and UI layout | **Implemented** | `frontend/package.json`, `frontend/src/app/` |
+| **Frontend Language** | TypeScript 5.0.0 | Static type safety and strict schema checking | **Implemented** | `frontend/tsconfig.json` |
+| **Frontend Styling** | Tailwind CSS 3.4.19 + Vanilla CSS Tokens | Editorial design tokens, typography, and responsive layouts | **Implemented** | `frontend/tailwind.config.js`, `frontend/src/app/globals.css`, `frontend/src/app/stitch.css` |
+| **Typography** | `next/font/google` | Zero-layout-shift Google fonts (`Cinzel`, `Playfair Display`, `Plus Jakarta Sans`) | **Implemented** | `frontend/src/app/layout.tsx` |
+| **Frontend Package Manager** | npm | Frontend dependency management | **Implemented** | `frontend/package-lock.json` |
+| **Backend Framework** | FastAPI 0.115.0+ | Asynchronous REST API, routing, and OpenAPI documentation | **Implemented** | `backend/pyproject.toml`, `backend/app/main.py` |
+| **Backend Language** | Python 3.12+ | Server-side programming and business logic | **Implemented** | `backend/pyproject.toml` (`requires-python = ">=3.12"`) |
+| **Backend ASGI Server** | Uvicorn 0.30.0+ | Asynchronous server execution | **Implemented** | `backend/pyproject.toml` |
+| **Database** | MongoDB Atlas | Flexible document storage for multi-event wedding records | **Configured & Verified** | Live Atlas cluster connected; `users` collection verified via `ping` |
+| **Database Driver** | PyMongo 4.9.0+ (`pymongo[asyncio]`) | Asynchronous non-blocking MongoDB communication | **Implemented** | `backend/app/db/session.py` (`AsyncMongoClient`) |
+| **Backend Package Manager** | uv | Fast Python virtual environment and dependency locking | **Implemented** | `backend/uv.lock`, `backend/pyproject.toml` |
+| **Media Storage** | Google Cloud Storage (GCS) | Encrypted, private storage of high-resolution wedding photos | **Planned** | Configured in `next.config.mjs` remote patterns; GCS SDK not yet integrated |
+| **Email Service** | Resend | Transactional dispatch of invitation emails with secure tokens | **Planned** | Documented in SDD v1.2; API client not yet integrated |
+| **Testing** | pytest 8.0+, pytest-asyncio, httpx, ESLint | Unit, cryptographic, schema, and health testing | **Implemented** | `backend/tests/` (10/10 tests passing); `frontend/eslint.config.mjs` (0 errors) |
+| **Hosting & Deployment** | Google Cloud Run / Compute Engine | Cloud application hosting and managed scaling | **Planned** | Proposed in SDD v1.2; local development verified on ports 3000 & 8000 |
 
-The wedding `slug` determines the public URL: `/w/[slug]`. The Manager can update permitted wedding fields from the dashboard.
+### 4.2 Technology Justifications & Responsibilities
 
-**Public wedding page** (`/w/[slug]`) shows couple names, dates, venue, and published events to any visitor without requiring login.
-
-### 4.2 Events and Task Planner
-
-**Events** are individual wedding functions (Haldi, Mehendi, Sangeet, Wedding Ceremony, Reception, or custom). Each event has:
-- Name, description
-- Start and end time
-- Venue name and address (with optional coordinates)
-- `isPublic` flag controlling visibility on the guest-facing website
-
-**Tasks** help the Manager organize wedding preparations. Each task has:
-- Title and description
-- Status: `pending`, `in_progress`, `completed`, `cancelled`
-- Priority: `low`, `medium`, `high`
-- Due date and optional assignee
-- Created-by reference
-
-The task planner is Manager-only; guests have no access to tasks.
-
-### 4.3 Guest Management
-
-The Manager maintains a guest list for their wedding. Each guest record holds:
-- Name, email address (used for invitations), phone number
-- Invitation status: `not_sent`, `sent`, `delivered`, `failed`, `revoked`
-
-Guest contact details are private and must never be returned by public APIs or viewable by other guests.
-
-### 4.4 Digital Invitations and Unique Invitation Links
-
-When the Manager sends an invitation to a guest, the backend:
-1. Generates a cryptographically secure, unique token
-2. Stores the **hash** of the token (never the raw token) in the `invitations` collection
-3. Sends an email (via Resend — proposed) containing the invitation link: `/w/[slug]/invite/[token]`
-
-The raw token travels only in the email link and in the URL when the guest opens it. It is never logged, stored in plaintext, or exposed in API responses.
-
-Tokens can be revoked, and replacement invitations can be sent. Invitation expiration policy is not yet finalized.
-
-### 4.5 RSVP Submission and Management
-
-**Guest RSVP flow (V1):**
-1. Guest opens the invitation link `/w/[slug]/invite/[token]`
-2. Backend validates the token, checks it has not been revoked, and identifies the associated guest and wedding
-3. Guest sees a confirmation page with the wedding details and RSVP options
-4. Guest selects Yes or No and submits
-5. Backend creates or updates the guest's RSVP record (one record per guest per wedding)
-6. Guest sees a success confirmation
-
-> **No OTP in V1.** The PRD v1.0 described OTP verification for RSVP access. This requirement is **deferred**. V1 uses only the unique invitation token as authorization. See Section 13 for the full conflict note.
-
-The Manager can view all RSVP responses and a summary (total guests, Yes, No, not responded) from the dashboard.
-
-### 4.6 Wedding Website and QR Codes
-
-Each wedding has a public website at `/w/[slug]` displaying:
-- Couple names and welcome message
-- Wedding date and general information
-- Published event schedules and venues
-- Venue location with map integration (Google Maps / Places — proposed)
-- QR code link
-- Livestream information (when available and permitted)
-
-The QR code (`GET /api/v1/public/weddings/{slug}/qr`) encodes the public wedding URL. Scanning it opens the correct wedding website. The QR code does not contain invitation tokens or private information.
-
-### 4.7 Private Photo Gallery
-
-The Manager can upload photos to named albums. Photos are stored in **Google Cloud Storage**; MongoDB stores only the metadata (object key, album, file info, uploader).
-
-**Guest access to the gallery (`/w/[slug]/gallery`):**
-- The slug alone is **not sufficient** to grant gallery access
-- The backend validates the guest's invitation token and confirms it is scoped to the correct wedding
-- Only after successful authorization does the backend issue short-lived GCS signed URLs for the private photos
-- Signed URLs expire after a configured lifetime
-- Private photos must not have permanent public object URLs
-
-> **Not yet implemented.** This authorization flow is the designed approach but is not part of the V1 scaffolding.
-
-### 4.8 Livestream Information
-
-The Manager can configure optional livestream details:
-- Provider (e.g., `youtube`)
-- URL (e.g., a YouTube Live link)
-- Enabled/disabled flag
-
-When enabled, the public wedding website displays the stream link. The platform links to the stream; it does not host a streaming service.
-
-### 4.9 Email Notifications and Reminders
-
-The Manager can send:
-- Initial invitation emails (via Resend — proposed)
-- RSVP reminder emails to guests who have not responded
-- Event reminder emails
-- Announcement emails
-
-Each email includes relevant wedding information. Emails must not expose other guests' personal information. The `notifications` collection tracks delivery status.
-
-WhatsApp and SMS notifications are excluded from V1.
+- **Next.js 15 (App Router):** Provides server rendering for public wedding SEO, fast client-side navigation for dashboards, and automatic image optimization via `<Image />`.
+- **FastAPI (Python 3.12):** Offers native asynchronous I/O matching MongoDB's async driver, automatic request validation via Pydantic, and self-documenting OpenAPI endpoints (`/api/docs`).
+- **MongoDB Atlas & PyMongo Async:** Schema flexibility is ideal for multi-cultural wedding events with diverse attributes (Haldi ceremonies, Sangeet schedules, custom dietary preferences) while supporting rapid indexing on `weddingId`, `email`, and `tokenHash`.
+- **Google Cloud Storage (Planned):** Prevents binary bloat inside MongoDB. Photos remain encrypted at rest in private buckets, exposed only via temporary pre-signed URLs.
 
 ---
 
-## 5. Technology Stack
+## 5. System Architecture
 
-### 5.1 Confirmed Choices (verified from configuration files)
-
-| Layer | Technology | Version / Detail |
-|---|---|---|
-| **Frontend framework** | Next.js (App Router) | `^15.0.0` (package.json) |
-| **Frontend language** | TypeScript | `^5.0.0` |
-| **Frontend runtime** | React | `^19.0.0` |
-| **Frontend styling** | Tailwind CSS + Vanilla CSS tokens (`globals.css`, `stitch.css`) | Curated haute couture brand palette (`gold`, `burgundy`, `charcoal`, `surface`) |
-| **Typography** | `next/font/google` | `Cinzel`, `Playfair Display`, `Plus Jakarta Sans` |
-| **Frontend package manager** | npm | (package-lock.json present) |
-| **Backend framework** | FastAPI | `>=0.115.0` (pyproject.toml) |
-| **Backend language** | Python | `>=3.12` |
-| **Backend ASGI server** | Uvicorn (standard extras) | `>=0.30.0` |
-| **Backend package manager** | uv | (uv.lock and pyproject.toml) |
-| **Database driver** | PyMongo Async (pymongo[asyncio]) | `>=4.9.0` |
-| **Settings management** | pydantic-settings | `>=2.5.0` |
-| **Authentication & Crypto** | PBKDF2-HMAC-SHA256 & HMAC-SHA256 | OWASP 600,000 iterations; signed session tokens; HTTP-only cookies |
-| **Media storage** | Google Cloud Storage & Google Photos | Remote patterns for `storage.googleapis.com` & `lh3.googleusercontent.com` |
-
-### 5.2 Proposed Integrations (documented but not yet configured)
-
-| Service | Purpose | Decision Status |
-|---|---|---|
-| MongoDB Atlas | Managed cloud database | Proposed and expected; URI format confirmed in .env.example |
-| Resend | Email invitations and reminders | Proposed (SDD v1.2 Section 2) |
-| Google Maps / Places | Venue display and location | Proposed (SDD v1.2 Section 2) |
-| YouTube Live | Optional livestream integration | Proposed (SDD v1.2 Section 2) |
-| Google OAuth | Potential Admin/Manager authentication | Proposed; exact usage not finalized |
-
-### 5.3 Infrastructure (Proposed, Not Finalized)
-
-| Component | Option | Decision Status |
-|---|---|---|
-| Frontend hosting | Google Cloud Run or Google Cloud VM | Pending |
-| Backend hosting | Google Cloud Run or Google Cloud VM | Pending |
-| Load balancing | Google Cloud Load Balancer | Proposed; pending deployment decision |
-| CDN | Google Cloud CDN | Optional; must not bypass private-gallery authorization |
-
-### 5.4 Development Tools (verified from config files)
-
-| Tool | Purpose |
-|---|---|
-| ESLint + eslint-config-next | Frontend linting |
-| @types/node, @types/react, @types/react-dom | TypeScript type definitions |
-| pytest + pytest-asyncio + httpx | Backend testing (pyproject.toml optional-dependencies) |
-| hatchling | Backend build backend |
-
----
-
-## 6. System Architecture
-
-### 6.1 Logical Architecture
-
-```
-                        Users
-                          |
-           +--------------+--------------+
-           |                             |
-      Admin / Manager                 Guests
-           |                             |
-           +--------------+--------------+
-                          |
-                   Next.js Frontend
-                          |
-             [Google Cloud Load Balancer]
-                   (if selected)
-                          |
-                  FastAPI Backend
-                          |
-          +---------------+----------------+
-          |               |                |
-   MongoDB Atlas   Google Cloud       External Services
-   (app data)      Storage            - Resend (email)
-                   (photos/media)     - Google Maps
-                                      - YouTube Live
-```
-
-### 6.2 Architecture Diagram
+The following diagram illustrates the verified local development architecture alongside the planned cloud production services:
 
 ```mermaid
 graph TD
-    A[Admin / Manager Browser] -->|HTTPS| B[Next.js Frontend]
-    C[Guest Browser] -->|HTTPS| B
-    B -->|REST API calls| D[FastAPI Backend]
-    D -->|Read/Write| E[(MongoDB Atlas)]
-    D -->|Signed URLs / metadata| F[Google Cloud Storage]
-    D -->|Send emails| G[Resend]
-    D -->|Venue lookup| H[Google Maps / Places]
-    B -->|Signed upload/download URL| F
-    B -->|Embed location| H
-    B -->|Link to stream| I[YouTube Live]
+    subgraph Client Layer
+        Browser[Client Browser / Mobile Device]
+    end
+
+    subgraph Frontend [Next.js 15 App Router - Port 3000]
+        LP["Landing Page (/)"]
+        AuthUI["Login & Signup (/login, /signup)"]
+        DashUI["Dashboards (/admin, /dashboard) [Planned]"]
+        PublicUI["Public Wedding (/w/[slug]) [Planned]"]
+    end
+
+    subgraph Backend [FastAPI Backend - Port 8000]
+        Main["FastAPI Entrypoint (app/main.py)"]
+        AuthRouter["Auth Router (/api/v1/auth)"]
+        AdminRouter["Admin Router (/api/v1/admin) [Planned]"]
+        WeddingRouter["Wedding Router (/api/v1/weddings) [Planned]"]
+        PublicRouter["Public Router (/api/v1/public) [Planned]"]
+        Security["Crypto: PBKDF2 & HMAC (app/core/security.py)"]
+        DBSession["PyMongo Async Client (app/db/session.py)"]
+    end
+
+    subgraph Data & Cloud Services
+        Atlas[("MongoDB Atlas Cloud (make-my-marriage-dev) [Verified]")]
+        GCS["Google Cloud Storage [Planned]"]
+        Resend["Resend Transactional Email [Planned]"]
+    end
+
+    Browser -->|HTTP 3000| Frontend
+    Frontend -->|REST API / Cookies (Port 8000)| Backend
+    Main --> AuthRouter
+    Main --> DBSession
+    AuthRouter --> Security
+    AuthRouter --> DBSession
+    DBSession -->|TLS / Async MongoClient| Atlas
+    Backend -.->|Pre-Signed Upload/Download URLs| GCS
+    Backend -.->|API Call| Resend
 ```
 
-### 6.3 Request and Data Flows
+### Architectural Request & Data Flows
 
-**Admin / Manager Dashboard flow:**
-1. User navigates to `/login`, enters credentials
-2. Frontend sends `POST /api/v1/auth/login` to FastAPI
-3. FastAPI validates credentials against the `users` collection (hashed password check)
-4. FastAPI establishes an authenticated session (mechanism not yet finalized)
-5. Frontend redirects to `/admin` or `/dashboard` based on role
-6. Subsequent dashboard API calls include the session credential
-7. FastAPI validates the role and wedding assignment before returning data
+1. **Authentication Flow:**
+   - User submits email/password at `/login`.
+   - Next.js sends `POST /api/v1/auth/login` with credentials.
+   - FastAPI queries the `users` collection via PyMongo Async.
+   - Passwords verified with PBKDF2-HMAC-SHA256 (600,000 iterations).
+   - FastAPI issues an `HttpOnly`, `SameSite=Lax` cookie (`session_token`) carrying an HMAC-SHA256 signed token `<user_id>.<timestamp>.<sig>`.
+   - Client is redirected to the home/dashboard view.
 
-**Guest RSVP flow:**
-1. Guest opens `/w/[slug]/invite/[token]` from their email
-2. Frontend sends the token to FastAPI for validation
-3. FastAPI hashes the token, looks up the matching invitation, checks revocation/expiry
-4. If valid, FastAPI returns the wedding and guest info
-5. Guest selects Yes/No and submits the RSVP
-6. FastAPI re-validates the token, upserts the RSVP record
-7. Frontend shows a confirmation message
+2. **Guest Invitation & RSVP Flow (Planned):**
+   - Manager requests invitation dispatch via `POST /api/v1/weddings/{id}/invitations`.
+   - FastAPI generates a 256-bit cryptographically secure random token, hashes it with SHA-256, and saves the hash in `invitations`.
+   - FastAPI triggers Resend to deliver an email containing `/w/[slug]/invite/[token]`.
+   - Guest clicks the link. Next.js requests `GET /api/v1/invitations/validate?token=[token]`.
+   - Backend verifies token hash and wedding scope, returning event details.
+   - Guest submits RSVP (`POST /api/v1/invitations/rsvp`), updating the database.
 
-**Photo upload flow:**
-1. Manager requests a signed upload URL from `POST /api/v1/weddings/{id}/photos/upload-url`
-2. FastAPI validates Manager authorization, generates a short-lived GCS signed URL
-3. Frontend uploads the file directly to GCS using the signed URL
-4. Frontend calls `POST /api/v1/weddings/{id}/photos/complete` with the object key
-5. FastAPI verifies the upload and saves photo metadata to MongoDB
-
-**Private gallery access flow:**
-1. Authorized guest opens `/w/[slug]/gallery` with their invitation token
-2. FastAPI validates the token and confirms the guest's authorization for this specific wedding
-3. FastAPI generates short-lived signed GCS URLs for the permitted photos
-4. Frontend displays the photos; URLs expire after a configured period
+3. **Private Photo Gallery Flow (Planned):**
+   - Manager uploads photos: Backend issues short-lived pre-signed GCS upload URL; client uploads binary directly to GCS; backend registers object metadata.
+   - Guest accesses `/w/[slug]/gallery`: Backend verifies guest invitation token; if valid, backend issues short-lived pre-signed GCS download URLs expiring within minutes.
 
 ---
 
-## 7. Database Overview
+## 6. Frontend Architecture
 
-The database is **MongoDB Atlas**. The driver is PyMongo Async (`pymongo[asyncio]`). All application data is stored in separate collections. Photo/media binaries are stored in Google Cloud Storage; MongoDB stores only the metadata.
+### 6.1 Directory Structure
+```
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx         # Root layout with font definitions and metadata
+│   │   ├── page.tsx           # Platform landing page with hero & visual previews
+│   │   ├── globals.css        # Core design tokens, CSS variables, and reset styles
+│   │   ├── stitch.css         # Atelier UI baseline styling
+│   │   ├── login/
+│   │   │   └── page.tsx       # Split-screen luxury Atelier login portal
+│   │   └── signup/
+│   │       └── page.tsx       # Split-screen registration portal for Couples & Planners
+│   └── lib/
+│       └── constants.ts       # Centralized constants (API_BASE_URL)
+├── next.config.mjs            # Next.js image domain configuration
+├── tailwind.config.js         # Tailwind theme extension (colors, fonts, tokens)
+├── tsconfig.json              # TypeScript compiler options
+└── package.json               # Scripts and frontend dependencies
+```
 
-### 7.1 Collections Summary
+### 6.2 Routing & Navigation
+- **App Router:** Built with Next.js App Router file-system routing.
+- **Existing Routes:**
+  - `/`: Public editorial platform landing page.
+  - `/login`: Unified login page for Admins, Managers, Couples, and Planners.
+  - `/signup`: Registration portal allowing user selection between `couple` and `planner` roles.
+- **Planned Routes:**
+  - `/admin`: Platform Administrator management dashboard.
+  - `/dashboard`: Wedding Manager operational dashboard.
+  - `/w/[slug]`: Public wedding showcase.
+  - `/w/[slug]/invite/[token]`: Token-authorized RSVP confirmation.
+  - `/w/[slug]/gallery`: Token-authorized private photo gallery.
 
-| Collection | Purpose |
-|---|---|
-| `users` | Authenticated platform users: Platform Admin and Wedding Managers. Stores hashed passwords, role, and wedding assignment. |
-| `weddings` | Wedding configuration: couple names, slug, dates, venue, location, manager assignments, livestream config, status. |
-| `events` | Wedding functions and schedules, each belonging to one wedding. Includes an `isPublic` flag. |
-| `tasks` | Wedding planning tasks with status, priority, due date, and assignee. Manager-only access. |
-| `expenses` | Wedding expense records. Uses Decimal128 for monetary amounts. Manager-only access. |
-| `guests` | Guest contact details (name, email, phone) and invitation status. Private; never returned by public APIs. |
-| `invitations` | One invitation record per guest, storing the **token hash** (not the raw token), status, and timestamps. |
-| `rsvps` | One RSVP record per guest per wedding. Response is `yes` or `no`. References the invitation used. |
-| `photoAlbums` | Album metadata: title, description, `accessType` (public or authorized_guests). |
-| `photos` | Photo metadata: GCS object key, filename, MIME type, size, uploader. Photo binaries are in GCS. |
-| `notifications` | Email delivery history: type (invitation / reminder), status, provider message ID. |
+### 6.3 Styling System & Design Tokens
+- **Palette:** Haute couture Atelier palette:
+  - Primary Gold: `#D4AF37` / `#C5A059`
+  - Burgundy Accent: `#722F37` / `#581825`
+  - Slate Charcoal: `#1A1A1A` / `#0D0D0D`
+  - Warm Surface: `#FDFBF7` / `#F4EFE6`
+- **Typography:** Configured via `next/font/google` in `layout.tsx`:
+  - `Cinzel`: Primary editorial display serif.
+  - `Playfair Display`: Classical luxury headline serif.
+  - `Plus Jakarta Sans`: High-legibility geometric sans-serif for forms, data tables, and body copy.
 
-### 7.2 Key Relationships
-
-- **`weddings` is the root** — Every wedding-specific record (`events`, `tasks`, `expenses`, `guests`, `photoAlbums`, `notifications`) carries a `weddingId`. All backend queries must scope by `weddingId` derived from the authenticated user's permissions, never from untrusted client input.
-- **`guests` → `invitations`** — One guest can have multiple invitation records over time (e.g., if a link is revoked and re-issued).
-- **`invitations` → `rsvps`** — An RSVP references the invitation through which it was submitted.
-- **`photoAlbums` → `photos`** — Each photo belongs to one album and one wedding.
-- **`users.weddingId`** — Assigns a Manager to a wedding. Platform Administrator accounts may have no wedding assignment.
-
-### 7.3 Data Isolation Principle
-
-The backend must derive or validate `weddingId` from the authenticated user session or a validated guest invitation token. The backend must **never trust a `weddingId` supplied by the frontend** without verifying authorization. This prevents cross-wedding data leakage.
-
-> Refer to `docs/DBDD.doc` for complete field definitions, index design, example documents, validation rules, and data lifecycle policies.
+### 6.4 Form Validation & API Communication
+- **Client-Side Validation:** Form handlers implement pre-flight regex validation (`EMAIL_REGEX`), password complexity checks (minimum 8 characters with numbers/symbols), and terms agreement checks.
+- **API Communication:** Centralized through `API_BASE_URL` in `src/lib/constants.ts`, utilizing native `fetch()` with `credentials: 'include'` to automatically exchange HTTP-only session cookies.
 
 ---
 
-## 8. API Overview
+## 7. Backend Architecture
 
-### 8.1 Versioning and Base URL
-
-All API endpoints are versioned under `/api/v1`.
-
-| Environment | Base URL |
-|---|---|
-| Local development | `http://localhost:8000/api/v1` |
-| Production | Not yet finalized |
-
-Interactive documentation is auto-generated by FastAPI at:
-- Swagger UI: `/api/docs`
-- ReDoc: `/api/redoc`
-- OpenAPI JSON: `/api/openapi.json`
-
-### 8.2 Standard Response Shape
-
-**Success:**
-```json
-{
-  "success": true,
-  "message": "Human-readable message",
-  "data": { }
-}
+### 7.1 Directory Structure
+```
+backend/
+├── app/
+│   ├── main.py                # FastAPI application entrypoint and middleware
+│   ├── core/
+│   │   ├── config.py          # Pydantic Settings configuration loader
+│   │   └── security.py        # PBKDF2 password hashing & HMAC-SHA256 session crypto
+│   ├── db/
+│   │   └── session.py         # PyMongo Async lifecycle, indexing, and seed logic
+│   ├── schemas/
+│   │   └── auth.py            # Pydantic request and response models
+│   └── api/
+│       └── v1/
+│           └── auth.py        # Auth router: /register, /login, /me, /logout
+├── tests/
+│   ├── test_health.py         # FastAPI liveness test
+│   ├── test_security.py       # Password hashing & session token unit tests
+│   └── test_auth_schemas.py   # Pydantic schema validation tests
+├── pyproject.toml             # Project dependencies and pytest configuration
+└── uv.lock                    # Dependency lockfile
 ```
 
-**Error:**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "The request contains invalid data",
-    "details": [{ "field": "startTime", "message": "A valid start time is required" }]
-  }
-}
+### 7.2 Entry Point & Configuration
+- **Application Factory:** Defined in `app/main.py` with OpenAPI endpoints mounted at `/api/docs` and `/api/redoc`.
+- **Environment Handling:** `app/core/config.py` uses `pydantic_settings.BaseSettings` to load environment variables from `backend/.env`. Missing required variables (`MONGODB_URI`, `DATABASE_NAME`, `SECRET_KEY`) immediately prevent startup with clear validation errors.
+- **CORS Middleware:** Configured in `app/main.py` using `settings.cors_origins_list` with `allow_credentials=True`.
+
+### 7.3 Database Lifecycle & Seeding
+- `app/db/session.py` defines an asynchronous lifespan context manager (`lifespan_db`).
+- On server startup, `init_db()` connects via `AsyncMongoClient`, creates a unique index on `users.email`, and checks environment guards.
+- If `ENVIRONMENT != "production"` or `SEED_DEMO_USERS=true`, it seeds initial concierge and administrative accounts if they do not already exist.
+
+---
+
+## 8. Database Design and Data Management
+
+### 8.1 Live Database Configuration (Verified)
+- **Database Engine:** MongoDB Atlas (Replica Set).
+- **Cluster Host:** `make-my-marriage-cluste.q54gv5h.mongodb.net`
+- **Database Name:** `make-my-marriage-dev`
+- **Active Collections:** `['users']` (Contains 4 documents; unique index on `email`).
+- **Cluster Tier / Region:** Managed cloud cluster; specific hardware tier (e.g., M0/M10) and provider region are unverified in repository code.
+
+### 8.2 Collections Summary (Approved DBDD v1.0 Model)
+
+```mermaid
+erDiagram
+    USERS ||--o{ WEDDINGS : "manages"
+    WEDDINGS ||--|{ EVENTS : "contains"
+    WEDDINGS ||--o{ TASKS : "contains"
+    WEDDINGS ||--o{ EXPENSES : "contains (deferred UI)"
+    WEDDINGS ||--|{ GUESTS : "has"
+    GUESTS ||--o{ INVITATIONS : "receives"
+    INVITATIONS ||--o| RSVPS : "yields"
+    WEDDINGS ||--o{ PHOTO_ALBUMS : "organizes"
+    PHOTO_ALBUMS ||--|{ PHOTOS : "contains"
+    WEDDINGS ||--o{ NOTIFICATIONS : "dispatches"
 ```
 
-### 8.3 API Groups
+| Collection | Role & Purpose | Current Status |
+|---|---|---|
+| `users` | Platform Admins, Managers, Couples, and Planners. Stores password hashes, roles, and assigned `weddingId`. | **Implemented & Active** (Indexed on `email`) |
+| `weddings` | Core wedding configuration: couple names, slug, date, venue coordinates, status, and assigned manager. | **Planned** |
+| `events` | Sub-events (Haldi, Mehendi, Sangeet, Ceremony, Reception) with dates, venues, and `isPublic` flags. | **Planned** |
+| `tasks` | Planning checklist with priorities, due dates, statuses (`pending`, `completed`), and assignees. | **Planned** |
+| `expenses` | Expense items with monetary amounts (`Decimal128`), categories, and receipts. *(Deferred from V1 UI).* | **Planned** (Schema approved; UI deferred) |
+| `guests` | Guest directory with names, emails, phone numbers, and invitation tracking status. Strictly private. | **Planned** |
+| `invitations` | Records token hashes (never raw tokens), dispatch timestamps, expiration dates, and revocation flags. | **Planned** |
+| `rsvps` | Stores Yes/No responses, guest attendance headcounts, and references to the validating invitation. | **Planned** |
+| `photoAlbums` | Album groupings with titles, cover photo references, and access policies. | **Planned** |
+| `photos` | Photo metadata (GCS object key, filename, MIME type, dimensions, uploader). Media binaries reside in GCS. | **Planned** |
+| `notifications` | Delivery logs for transactional invitation and reminder emails. | **Planned** |
 
-| Group | Prefix | Authentication | Description |
+### 8.3 Data Scoping & Uniqueness Rules
+- **Unique Indexes:** `users.email` (unique), `weddings.slug` (unique), `invitations.tokenHash` (unique), `rsvps.guestId + rsvps.weddingId` (compound unique).
+- **Tenant Isolation:** Every data query targeting wedding sub-resources (`events`, `tasks`, `guests`, `rsvps`, `photos`) must explicitly filter by `weddingId` derived from the verified user session or guest token.
+
+---
+
+## 9. Servers, Hosting, and Infrastructure
+
+### 9.1 Local Development Infrastructure (Verified)
+- **Frontend Server:** Node.js / Next.js local server running on `http://localhost:3000`.
+- **Backend Server:** Python 3.12 / Uvicorn server running on `http://localhost:8000`.
+- **Database:** Remote MongoDB Atlas cluster accessible via authenticated TLS connection over port `27017`.
+
+### 9.2 Planned Production Infrastructure (Proposed)
+
+| Component | Proposed Technology | Configuration Notes |
+|---|---|---|
+| **Frontend Hosting** | Google Cloud Run (Containerized Next.js) | Autoscaling 0 to N; stateless container instances |
+| **Backend Hosting** | Google Cloud Run (Containerized FastAPI) | Fully managed serverless container runtime |
+| **Database** | MongoDB Atlas Dedicated / Shared Cluster | Multi-region automated backups, encrypted at rest |
+| **Media Storage** | Google Cloud Storage (Standard Bucket) | Private bucket with uniform bucket-level access |
+| **Load Balancer** | Google Cloud HTTP(S) Load Balancer | Global anycast IP, SSL certificate termination |
+| **CDN** | Google Cloud CDN | Caching public assets; strictly bypassed for private gallery routes |
+| **Domain & DNS** | Custom Domain with Google Cloud Managed DNS | Automatic TLS certificate issuance and renewal |
+| **CI/CD** | GitHub Actions | Automated linting, test execution, container builds, and deployment |
+
+---
+
+## 10. API Architecture
+
+All backend REST endpoints are organized under the `/api/v1` base path.
+
+### 10.1 Implemented Endpoints (Verified)
+
+| Method | Endpoint | Auth Required | Description |
 |---|---|---|---|
-| Health | `/api/v1/health` | None | Server liveness check |
-| Authentication | `/api/v1/auth/` | Mixed | Login, logout, current user, password reset |
-| Platform Admin | `/api/v1/admin/` | Platform Admin | Create weddings, create/manage Manager accounts |
-| Wedding Management | `/api/v1/weddings/{weddingId}/` | Admin or Manager | Dashboard, events, tasks, expenses, guests, invitations, reminders, photos, location, livestream |
-| Public Wedding | `/api/v1/public/weddings/{slug}/` | None | Public wedding details, events, location, QR code, gallery (authorized), livestream |
-| Invitations / RSVP | `/api/v1/invitations/` | Invitation token | Token validation, RSVP submission |
+| `GET` | `/api/v1/health` | None | Server liveness check; returns `{"status": "ok"}` |
+| `POST` | `/api/v1/auth/register` | None | Registers a Couple or Planner account; sets `session_token` cookie |
+| `POST` | `/api/v1/auth/login` | None | Authenticates with email/password; sets `session_token` cookie |
+| `GET` | `/api/v1/auth/me` | Session Cookie / Bearer | Retrieves currently authenticated user profile |
+| `POST` | `/api/v1/auth/logout` | Session Cookie | Clears the `session_token` cookie and terminates session |
 
-### 8.4 Currently Implemented Endpoints
+### 10.2 Planned Endpoints (Approved in `API-DD.md`)
 
-| Method | Endpoint | Status | Description |
+- **Platform Admin:** `POST /api/v1/admin/weddings`, `GET /api/v1/admin/weddings`, `POST /api/v1/admin/managers`
+- **Wedding Management:** `GET /api/v1/weddings/{id}/dashboard`, `PATCH /api/v1/weddings/{id}`
+- **Events & Tasks:** `POST /api/v1/weddings/{id}/events`, `GET /api/v1/weddings/{id}/events`, `POST /api/v1/weddings/{id}/tasks`
+- **Guest List & Invitations:** `POST /api/v1/weddings/{id}/guests`, `POST /api/v1/weddings/{id}/invitations`
+- **Public & Guest RSVP:** `GET /api/v1/public/weddings/{slug}`, `GET /api/v1/invitations/validate`, `POST /api/v1/invitations/rsvp`
+- **Media & Photos:** `POST /api/v1/weddings/{id}/photos/upload-url`, `GET /api/v1/weddings/{id}/photos`
+- **QR & Livestream:** `GET /api/v1/public/weddings/{slug}/qr`, `PATCH /api/v1/weddings/{id}/livestream`
+
+---
+
+## 11. Security, Privacy, and Data Isolation
+
+### 11.1 Implemented Security Controls
+- **Password Hashing:** Implemented in `app/core/security.py` using **PBKDF2-HMAC-SHA256** with **600,000 iterations** and a 16-byte random salt (complying with OWASP guidelines).
+- **Session Signing:** Session tokens are formatted as `<user_id>.<timestamp>.<signature>` signed via HMAC-SHA256 using the platform `SECRET_KEY`.
+- **Cookie Security:** Delivered with `HttpOnly=True`, `SameSite=Lax`, and configurable `Secure` flags (`cookie_secure=False` for local dev; `True` in production).
+- **Environment-Guarded Seeding:** Demo accounts are prevented from seeding into production environments through strict `ENVIRONMENT` checks.
+
+### 11.2 Planned Security Controls
+- **Token Hashing at Rest:** Raw invitation tokens sent in email links are hashed before storage. A compromised database reveals only token hashes, preventing unauthorized RSVP spoofing.
+- **Short-Lived Signed URLs:** Private gallery images are never publicly readable. The backend validates guest tokens before generating Google Cloud Storage signed URLs with 15-minute expirations.
+- **Rate Limiting:** Public invitation and login endpoints will enforce IP-based rate limiting to protect against brute-force attacks.
+
+---
+
+## 12. Configuration and Environment Variables
+
+### 12.1 Frontend Environment Variables (`frontend/.env.example`)
+
+| Variable | Required | Purpose | Example Value |
 |---|---|---|---|
-| `GET` | `/api/v1/health` | Implemented & Tested | Server liveness check |
-| `POST` | `/api/v1/auth/register` | Implemented & Tested | Register Couple or Planner account; issues session cookie |
-| `POST` | `/api/v1/auth/login` | Implemented & Tested | Authenticate any Atelier user; issues session cookie & token |
-| `GET` | `/api/v1/auth/me` | Implemented & Tested | Fetch authenticated user profile via session cookie or Bearer header |
-| `POST` | `/api/v1/auth/logout` | Implemented & Tested | Terminate session and clear authentication cookie |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes | Base URL of the FastAPI backend for client fetch calls | `http://localhost:8000` |
 
-All other endpoints described in `API-DD.doc` are **not yet implemented**.
+### 12.2 Backend Environment Variables (`backend/.env.example`)
 
-> Refer to `docs/API-DD.doc` for detailed endpoint specifications, request/response schemas, HTTP status code usage, validation rules, and the complete testing strategy.
+| Variable | Required | Purpose | Example Value |
+|---|---|---|---|
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string with credentials | `mongodb+srv://<user>:<pwd>@cluster.mongodb.net/?retryWrites=true&w=majority` |
+| `DATABASE_NAME` | Yes | MongoDB database name | `make-my-marriage-dev` |
+| `SECRET_KEY` | Yes | Cryptographic secret for signing session tokens | `<64-character-random-hex>` |
+| `CORS_ORIGINS` | Yes | Comma-separated list of allowed frontend origins | `http://localhost:3000` |
+| `ENVIRONMENT` | No | Runtime environment (`development`, `staging`, `production`) | `development` |
+| `COOKIE_SECURE` | No | Whether to require HTTPS for session cookies | `false` (set `true` in prod) |
+| `SEED_DEMO_USERS` | No | Flag to seed demo manager accounts on startup | `true` |
 
----
-
-## 9. Authentication, Security, and Privacy
-
-### 9.1 Authentication Architecture (Confirmed & Implemented)
-
-- **Unified Authentication:** Platform Admins, Concierge Managers, Marrying Couples, and Wedding Planners authenticate through the unified login portal (`/login`).
-- **Self-Service Registration:** Couples and Planners can create accounts directly via the registration portal (`/signup`), choosing their account type (`couple` or `planner`).
-- **Password Security:** Passwords are never stored in plaintext. They are hashed using **PBKDF2-HMAC-SHA256** with **600,000 iterations** (OWASP recommended) and a cryptographically secure 16-byte random salt (`backend/app/core/security.py`).
-- **Session Token Format:** Session tokens follow a signed structure: `<user_id>.<timestamp>.<signature>` signed with HMAC-SHA256 using the platform `SECRET_KEY`.
-- **Session Delivery & Storage:**
-  - On login or registration, the backend sets an **`HttpOnly`**, **`SameSite=Lax`** cookie (`session_token`) with a default 30-day lifetime (`rememberMe=True`) or 1-day lifetime.
-  - The response payload also includes `token` for optional `Authorization: Bearer <token>` consumption by headless clients or external consumers.
-  - Cookie security is configurable via `COOKIE_SECURE` in `.env` (defaults to `False` for local development; set to `True` in HTTPS production).
-- **Environment-Guarded Seeding:** Demo/manager accounts are seeded into the database only in non-production environments (`ENVIRONMENT != "production"`) or when `SEED_DEMO_USERS=true`, protecting production databases from default credentials.
-- **Logout:** Calling `/api/v1/auth/logout` deletes the `session_token` cookie from the client.
-
-### 9.2 Guest Access and Invitation Token Behavior
-
-- Guests do **not** log in or create accounts
-- The public wedding website (`/w/[slug]`) is accessible to any visitor
-- For guest-specific actions (RSVP, gallery), the backend validates the **invitation token** sent in the URL
-- Token validation steps:
-  1. The backend hashes the submitted token and looks up the matching `invitations` record
-  2. It checks the token's status (must not be `revoked` or `expired`)
-  3. It confirms the token belongs to the correct wedding
-  4. Only then does it allow the protected action
-- Tokens are generated using a **cryptographically secure random generator**
-- Only the **hash** of the token is stored in MongoDB; the raw token exists only in the email link
-- Raw tokens must never appear in application logs, analytics events, or API responses
-
-### 9.3 Guest Privacy
-
-- Guest phone numbers, email addresses, full guest lists, invitation token hashes, and private RSVP records must **never be returned by public APIs**
-- Guests can only access their own RSVP information (the token scopes the request to a single guest)
-- Gallery access requires a valid invitation token — the wedding slug alone is insufficient
-
-### 9.4 Private Gallery Authorization
-
-- Photos are stored in a **non-public** GCS bucket
-- The backend generates **short-lived signed URLs** only after confirming the guest's invitation token is valid and authorized for that specific wedding
-- A guest from Wedding A cannot access Wedding B's gallery
-- Signed URLs expire; guests cannot reuse them indefinitely
-
-### 9.5 Wedding-Level Data Isolation
-
-- Every backend query against wedding-specific data must include a `weddingId` check derived from the authenticated user's session
-- A Manager's requests are scoped to their assigned wedding; the backend enforces this on every operation
-- Manipulating an ID in a request must not bypass authorization
-
-### 9.6 General Security Principles
-
-- HTTPS required in production
-- CORS configured in the backend (`CORS_ORIGINS` environment variable)
-- Sensitive fields (passwords, token hashes) are never returned by any API
-- Rate limiting on sensitive public endpoints (invitation token validation, login)
-- Error responses must not reveal whether a specific email or username exists
+> **Security Rule:** Never commit `.env` or `.env.local` files to version control. Both patterns are strictly ignored in `.gitignore`.
 
 ---
 
-## 10. Project Structure
-
-The following is the current directory tree including implemented authentication and test modules:
+## 13. Repository Structure
 
 ```
 make-my-marriage/
-├── .agents/                        # Workspace-level agent customizations
-├── .git/                           # Git repository
-├── .gitignore
-├── README.md                       # Project README with architecture and setup instructions
+├── .gitignore                      # Git exclusion rules
+├── README.md                       # High-level architecture summary & document index
+├── docs/                           # Living specifications & technical documentation
+│   ├── PRD.md                      # Product Requirements Document v1.0
+│   ├── SDD.md                      # System Design Document v1.2
+│   ├── DBDD.md                     # Database Design Document v1.0
+│   ├── API-DD.md                   # API Design Document v1.0
+│   ├── PROJECT_OVERVIEW.md         # Comprehensive technical guide (this file)
+│   └── DEVELOPMENT_PROGRESS.md     # Implementation tracker & milestone handover
 │
-├── docs/                           # Documentation and specifications
-│   ├── PRD.doc                     # Product Requirements Document v1.0
-│   ├── SDD.doc                     # System Design Document v1.2
-│   ├── DBDD.doc                    # Database Design Document v1.0
-│   ├── API-DD.doc                  # API Design Document v1.0
-│   ├── PROJECT_OVERVIEW.md         # Consolidated project overview (this file)
-│   └── DEVELOPMENT_PROGRESS.md    # Development tracking and milestone document
-│
-├── frontend/                       # Next.js application (App Router, TypeScript, Tailwind CSS)
-│   ├── .env.example                # Environment variable template
-│   ├── .env.local                  # Local environment variables (not committed)
-│   ├── .next/                      # Next.js build output (generated)
-│   ├── next-env.d.ts               # Next.js TypeScript declarations (generated)
-│   ├── next.config.mjs             # Next.js config (GCS & Google Photos remote patterns)
-│   ├── tailwind.config.js          # Atelier luxury brand theme tokens and typography
-│   ├── node_modules/               # Installed npm dependencies
-│   ├── package.json                # npm dependencies and scripts
-│   ├── package-lock.json           # Locked dependency versions
+├── frontend/                       # Next.js 15 App Router Frontend
+│   ├── .env.example                # Frontend environment template
+│   ├── .env.local                  # Local frontend environment (not committed)
+│   ├── package.json                # Dependencies: Next.js 15, React 19, Tailwind CSS
+│   ├── package-lock.json           # Locked npm dependencies
 │   ├── tsconfig.json               # TypeScript configuration
+│   ├── tailwind.config.js          # Design system color and font tokens
+│   ├── next.config.mjs             # Remote image domain permissions
 │   └── src/
-│       ├── lib/
-│       │   └── constants.ts        # Centralized constants (API_BASE_URL)
-│       └── app/                    # Next.js App Router root
-│           ├── globals.css         # CSS design tokens, split portal layout styles
-│           ├── stitch.css          # Design system baseline styles
-│           ├── layout.tsx          # Root layout component with Google Font optimization
-│           ├── page.tsx            # Haute couture landing page with auth links
-│           ├── login/
-│           │   └── page.tsx        # Split-screen luxury login page for Atelier accounts
-│           └── signup/
-│               └── page.tsx        # Split-screen registration page for Couples & Planners
+│       ├── lib/constants.ts        # Centralized API_BASE_URL constant
+│       └── app/                    # Next.js App Router tree
+│           ├── layout.tsx          # Root layout with Google font optimization
+│           ├── globals.css         # CSS design tokens and split portal classes
+│           ├── stitch.css          # Baseline styling
+│           ├── page.tsx            # Editorial landing page
+│           ├── login/page.tsx      # Split-screen Atelier login portal
+│           └── signup/page.tsx     # Split-screen registration portal
 │
-└── backend/                        # FastAPI application (Python 3.12, uv)
-    ├── .env                        # Local environment variables (not committed)
-    ├── .env.example                # Environment variable template
-    ├── .venv/                      # Python virtual environment (managed by uv)
-    ├── pyproject.toml              # Project metadata, dependencies, pytest configuration
-    ├── uv.lock                     # Locked Python dependency versions
+└── backend/                        # FastAPI Python 3.12 Backend
+    ├── .env.example                # Backend environment template
+    ├── .env                        # Local backend environment (not committed)
+    ├── pyproject.toml              # Dependencies: FastAPI, Uvicorn, PyMongo, Pydantic
+    ├── uv.lock                     # Locked Python dependencies
     ├── app/
-    │   ├── main.py                 # FastAPI app factory, CORS middleware, router mounts
+    │   ├── main.py                 # FastAPI entrypoint, CORS, and health endpoint
     │   ├── core/
-    │   │   ├── config.py           # Pydantic Settings: validates env vars & cookie_secure
-    │   │   └── security.py         # PBKDF2 password hashing & HMAC-SHA256 token crypto
-    │   ├── schemas/
-    │   │   └── auth.py             # Pydantic validation models for auth requests/responses
-    │   ├── api/
-    │   │   └── v1/
-    │   │       └── auth.py         # Auth endpoints (/register, /login, /me, /logout)
-    │   └── db/
-    │       └── session.py          # PyMongo client lifecycle, index setup & guarded seed
-    └── tests/                      # Automated test suite (pytest)
-        ├── test_security.py        # Unit tests for password hashing & session token crypto
-        ├── test_auth_schemas.py    # Unit tests for auth request/response schemas
-        └── test_health.py          # Integration test for health check endpoint
+    │   │   ├── config.py           # Pydantic Settings environment validation
+    │   │   └── security.py         # PBKDF2 hashing & HMAC session signing
+    │   ├── db/session.py           # PyMongo Async connection pool & demo seeding
+    │   ├── schemas/auth.py         # Request and response Pydantic models
+    │   └── api/v1/auth.py          # Auth routes (/register, /login, /me, /logout)
+    └── tests/
+        ├── test_health.py          # Liveness test
+        ├── test_security.py        # Cryptography & token unit tests
+        └── test_auth_schemas.py    # Schema validation tests
 ```
-
-### Key File Purposes
-
-| File | Purpose |
-|---|---|
-| `frontend/src/app/globals.css` | Defines CSS design token system, responsive `.portal-split-wrapper` styles |
-| `frontend/src/app/layout.tsx` | Root Next.js layout; sets page title, metadata, and optimized fonts |
-| `frontend/src/app/page.tsx` | Platform landing page with hero, live preview, features, and direct auth links |
-| `frontend/src/app/login/page.tsx` | Luxury split-screen login page with form validation and demo preset aids |
-| `frontend/src/app/signup/page.tsx` | Luxury split-screen registration page with role toggle (`couple`/`planner`) |
-| `frontend/src/lib/constants.ts` | Centralized `API_BASE_URL` (`process.env.NEXT_PUBLIC_API_URL`) |
-| `backend/app/main.py` | FastAPI app instance, CORS middleware, health endpoint, router inclusion |
-| `backend/app/core/security.py` | PBKDF2-HMAC-SHA256 password hashing and HMAC-SHA256 session token generation/verification |
-| `backend/app/schemas/auth.py` | Request and response validation models for registration, login, and user profile |
-| `backend/app/api/v1/auth.py` | Endpoints for user registration, authentication, session profile, and logout |
-| `backend/app/db/session.py` | PyMongo connection lifecycle, unique index creation, and environment-guarded demo seeding |
-| `backend/tests/` | Automated test suites ensuring 100% pass rate for cryptography, schemas, and health checks |
 
 ---
 
-## 11. Environment Setup
+## 14. Local Development Setup
 
-### 11.1 Prerequisites
+Follow this verified sequence to set up and run Make My Marriage locally:
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Node.js | 20+ | Required for Next.js 15 |
-| npm | Bundled with Node.js | Used for frontend dependency management |
-| Python | 3.12+ | Required by pyproject.toml |
-| uv | Latest | Python package and venv manager; must be installed separately |
-| MongoDB Atlas | Any | A cluster URI is required; local MongoDB can be substituted for development |
+### 1. Prerequisites
+- **Node.js:** `v20.0.0+`
+- **npm:** `v10.0.0+`
+- **Python:** `v3.12.0+`
+- **uv:** Latest version (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- **MongoDB Atlas Account:** Connection URI for development database
 
-### 11.2 Frontend Setup
-
+### 2. Frontend Installation & Startup
 ```bash
+# Navigate to frontend directory
 cd frontend
-npm install          # Install dependencies (node_modules exists but verify)
-npm run dev          # Start the Next.js development server on port 3000
-```
 
-Copy the environment template and configure:
-```bash
+# Install dependencies
+npm install
+
+# Configure environment
 cp .env.example .env.local
-# Edit .env.local and set:
-# NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# Verify NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 in .env.local
+
+# Start Next.js development server
+npm run dev
+# Server will listen on http://localhost:3000
 ```
 
-**`frontend/.env.example` variables:**
-
-| Variable | Description | Default |
-|---|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | Base URL of the FastAPI backend | `http://localhost:8000` |
-
-### 11.3 Backend Setup
-
+### 3. Backend Installation & Startup
 ```bash
+# Navigate to backend directory
 cd backend
-uv venv              # Create the virtual environment in .venv/
-uv pip install -e .  # Install dependencies from pyproject.toml
-uvicorn app.main:app --reload  # Start the development server on port 8000
-```
 
-Copy the environment template and configure:
-```bash
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+
+# Configure environment
 cp .env.example .env
-# Edit .env with real values (never commit .env)
+# Edit .env with your MONGODB_URI, DATABASE_NAME, and SECRET_KEY
+
+# Start FastAPI development server
+uvicorn app.main:app --reload --port 8000
+# Server will listen on http://localhost:8000
 ```
 
-**`backend/.env.example` variables:**
+### 4. Running Automated Tests
+```bash
+# Execute backend test suite (must run inside backend directory)
+cd backend
+.venv/bin/pytest
 
-| Variable | Description | Example |
-|---|---|---|
-| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://...` |
-| `DATABASE_NAME` | Database name for this environment | `make-my-marriage-dev` |
-| `SECRET_KEY` | Secret key for signing tokens/sessions | Long random string |
-| `CORS_ORIGINS` | Comma-separated list of allowed frontend origins | `http://localhost:3000` |
+# Verify frontend code quality
+cd ../frontend
+npm run lint
+```
 
-> **Not yet verified:** Backend startup with a real MongoDB Atlas connection has not been confirmed. See `docs/DEVELOPMENT_PROGRESS.md` for current verification status.
-
-### 11.4 Verification Checklist
-
-| Check | Command | Expected result |
-|---|---|---|
-| Frontend starts | `npm run dev` (in `frontend/`) | Next.js dev server on port 3000 |
-| Backend starts | `uvicorn app.main:app --reload` (in `backend/`) | Uvicorn listening on port 8000 |
-| Health endpoint responds | `curl http://localhost:8000/api/v1/health` | `{"status": "ok"}` |
-| API docs accessible | Open `http://localhost:8000/api/docs` | Swagger UI |
-
----
-
-## 12. Deployment and Scalability
-
-### 12.1 Documented Hosting Direction
-
-| Component | Documented Direction | Decision Status |
-|---|---|---|
-| Frontend hosting | Google Cloud Run or Google Cloud VM | **Pending** |
-| Backend hosting | Google Cloud Run or Google Cloud VM | **Pending** |
-| Database | MongoDB Atlas managed cloud | Confirmed direction |
-| Media storage | Google Cloud Storage | Confirmed direction |
-| Load balancing | Google Cloud Load Balancer | Proposed; pending deployment decision |
-| CDN | Google Cloud CDN | Optional; must not allow private media to be cached unsafely |
-
-### 12.2 Scale Estimate
-
-The SDD v1.2 provides a planning estimate of **fewer than 10,000 guests** across the platform. This is not a finalized capacity commitment. Load testing should establish actual targets before production.
-
-### 12.3 Performance Considerations (from SDD v1.2)
-
-- Index frequently queried MongoDB fields (see DBDD.doc Section 6)
-- Paginate guest lists, task lists, and photo collections
-- Store images in GCS rather than MongoDB
-- Generate thumbnails and optimized image sizes where appropriate
-- Keep private gallery authorization checks active even when a CDN is used
-
-### 12.4 Open Deployment Decisions
-
-The following deployment decisions have not yet been finalized:
-- Cloud Run versus Compute Engine VM
-- Whether a Google Cloud Load Balancer is needed
-- Whether Google Cloud CDN is needed and how private content will be excluded
-- Custom domain and final URL structure
-- Development, testing, and production environment definitions
-- Secret management, monitoring, and backup configuration
+### 5. Health Verification
+- Open `http://localhost:8000/api/v1/health` in a browser or run:
+  ```bash
+  curl http://localhost:8000/api/v1/health
+  # Expected output: {"status":"ok"}
+  ```
+- Open `http://localhost:8000/api/docs` to verify the interactive Swagger documentation.
+- Open `http://localhost:3000` to verify the frontend landing page.
 
 ---
 
-## 13. Source Documents and Decision Notes
+## 15. Current Limitations and Technical Decisions
 
-### 13.1 Source Documents
+### 15.1 Finalized Decisions
+1. **No Guest Accounts:** Guests will never be asked to log in or create credentials.
+2. **No SMS / Phone OTP in V1:** Verification is handled exclusively via cryptographic email tokens (`/w/[slug]/invite/[token]`).
+3. **Expense Tracker Deferred:** The expense management UI is deferred from V1 MVP.
+4. **Session Authentication Model:** HTTP-only cookies (`session_token`) carrying signed session tokens with optional Bearer token fallback for headless consumers.
+5. **Password Cryptography:** PBKDF2-HMAC-SHA256 with 600,000 iterations and 16-byte random salt.
 
-| File | Version | Description |
-|---|---|---|
-| `docs/PRD.doc` | v1.0 | Product Requirements Document — features, user roles, V1 scope |
-| `docs/SDD.doc` | v1.2 | System Design Document — architecture, tech stack, data model, implementation order |
-| `docs/DBDD.doc` | v1.0 | Database Design Document — collection schemas, indexes, validation, security, lifecycle |
-| `docs/API-DD.doc` | v1.0 | API Design Document — endpoint specifications, request/response schemas, security rules |
-
-### 13.2 Specification Precedence
-
-Where the source documents disagree, the later technical specifications (SDD v1.2, DBDD v1.0, API-DD v1.0) **supersede** PRD v1.0 for implementation purposes. This is documented in `README.md`.
-
-### 13.3 OTP Requirement — Documented Conflict and Resolution
-
-**PRD v1.0, Section 5.9** describes SMS/phone OTP verification for guests accessing or updating RSVP information.
-
-**SDD v1.2, DBDD v1.0, and API-DD v1.0** explicitly exclude guest accounts, guest login, and OTP verification from V1.
-
-**Confirmed V1 decision (recorded in `README.md`):** OTP is **deferred to a future release**. Guests in V1 identify themselves exclusively through cryptographic unique invitation tokens delivered via email (`/w/[slug]/invite/[token]`). No account creation, phone number verification, or OTP is required.
-
-**Do not implement OTP as part of V1 development.**
-
-### 13.4 Expense Tracker — Documented Conflict and Resolution
-
-**PRD v1.0, Section 5.5** notes "Budget and expense tracking are not part of this module in Version 1."
-
-**SDD v1.2 and DBDD v1.0** include an `expenses` collection and related API endpoints in the technical specification.
-
-**Confirmed V1 decision (recorded in `README.md`):** The Expense Tracker **UI feature is deferred from V1 product scope**. The data collection and API design exist in the specifications and can be implemented in the backend for completeness, but the user-facing expense management interface is not a V1 deliverable.
-
-### 13.5 Admin Role Boundary — Open Item
-
-The SDD v1.2 describes two supervisory levels: Platform Administrator and wedding-level Admin. The precise boundary of editing versus supervisory permissions for the Admin role has **not been finalized**. Consult with the project owner before implementing Admin-specific permissions beyond what is clearly defined.
-
-### 13.6 Additional Open Items (from SDD v1.2 and API-DD v1.0)
-
-- **Authentication mechanism & session configuration** — **Resolved:** HTTP-only SameSite=Lax session cookie (`session_token`) with Bearer token fallback; PBKDF2-HMAC-SHA256 password hashing (600,000 iterations); signed session token `<user_id>.<timestamp>.<signature>` via HMAC-SHA256 with `SECRET_KEY`.
-- Password reset and account activation flow
-- Invitation expiration and replacement policy
-- Guest gallery access when a guest loses their invitation link
-- Whether guest email addresses are mandatory or optional
-- Final production domain and URL structure
-- Monitoring, backup frequency, and recovery targets
+### 15.2 Pending Decisions & Technical Constraints
+1. **Admin Boundary Definition:** The exact supervisory boundary between the Platform Administrator and wedding-level managers regarding event data modification remains to be finalized in future dashboard milestones.
+2. **Invitation Expiration Policy:** Expiration windows for invitation tokens (e.g., 30 days vs. wedding date + 7 days) are not yet codified in configuration.
+3. **Resend Email Templates:** HTML email templates for luxury invitations have not yet been authored.
+4. **GCS Cloud Bucket Provisioning:** Live GCS bucket credentials and upload policies remain to be configured in a staging environment.
+5. **Next.js Post-Login Redirects:** The `/login` page currently redirects to `/` because the `/dashboard` and `/admin` routes are pending implementation in the next phase.

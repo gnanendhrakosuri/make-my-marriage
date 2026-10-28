@@ -1,308 +1,266 @@
-# Make My Marriage — Development Progress
+# Make My Marriage — Development Progress & Handover Record
 
-> **Purpose:** This is the living development-tracking document for the Make My Marriage project. It records what has actually been built, what is in progress, and what remains. Update this document after meaningful development work. Never claim a feature is complete without evidence.
+> **Document Type:** Living Implementation Tracker & Engineering Handover Record  
+> **Target Audience:** Future Developers and Engineering Teams joining Make My Marriage  
+> **Last Updated:** 2026-10-28  
+> **Current Baseline:** Dev Branch (Full-Stack Authentication & Editorial Scaffolding Verified)
 
 ---
 
 ## Table of Contents
 
-1. [Project Status](#1-project-status)
-2. [Initial Scaffolding](#2-initial-scaffolding)
-3. [Environment and Startup Verification](#3-environment-and-startup-verification)
-4. [Feature Implementation Tracker](#4-feature-implementation-tracker)
-5. [Technical Decisions](#5-technical-decisions)
-6. [Issues and Resolutions](#6-issues-and-resolutions)
-7. [Development Milestones](#7-development-milestones)
-8. [Next Steps](#8-next-steps)
-9. [Instructions for Future Developers and AI Assistants](#9-instructions-for-future-developers-and-ai-assistants)
+1. [Development Summary](#1-development-summary)
+2. [Feature Implementation Matrix](#2-feature-implementation-matrix)
+3. [Completed Work](#3-completed-work)
+4. [Current Work in Progress](#4-current-work-in-progress)
+5. [Pending Features and Tasks](#5-pending-features-and-tasks)
+6. [Prioritized Next Tasks](#6-prioritized-next-tasks)
+7. [Testing and Validation Status](#7-testing-and-validation-status)
+8. [Known Issues and Blockers](#8-known-issues-and-blockers)
+9. [Infrastructure and Deployment Readiness](#9-infrastructure-and-deployment-readiness)
+10. [Recommended Next Development Session](#10-recommended-next-development-session)
+11. [Progress Update Rules](#11-progress-update-rules)
 
 ---
 
-## 1. Project Status
+## 1. Development Summary
 
-| Field | Value |
+| Metric / Dimension | Current Verified State |
 |---|---|
-| **Current Phase** | Phase 2 — Core Authentication & Editorial Experience |
-| **Last Updated** | 2026-10-28 |
-| **Overall Status** | Backend authentication API and frontend luxury login/signup pages complete and verified |
-
-**Summary:** The foundational authentication system has been fully implemented and verified. The backend provides secure registration, login, current profile (`/me`), and logout endpoints backed by PBKDF2-HMAC-SHA256 password hashing, HMAC-SHA256 signed session tokens, and HTTP-only cookies. Automated test coverage (10/10 pytest passing) covers security hashing, schemas, and health endpoints. The frontend features couture split-screen editorial landing, login, and registration pages for Couples and Wedding Planners, with zero ESLint warnings, Next.js image optimization, and passing production builds (`npm run build`).
-
----
-
-## 2. Initial Scaffolding & Core Auth Files
-
-### 2.1 Frontend Files Created
-
-| File / Directory | Type | Purpose |
-|---|---|---|
-| `frontend/package.json` | Created | npm project definition; defines dependencies and dev scripts |
-| `frontend/package-lock.json` | Generated | Locked dependency versions |
-| `frontend/node_modules/` | Generated | Installed npm packages (Next.js 15, React 19, TypeScript 5, Tailwind CSS, ESLint) |
-| `frontend/tsconfig.json` | Created | TypeScript compiler options with strict mode and App Router plugin |
-| `frontend/next.config.mjs` | Modified | Next.js config; permits remote images from `storage.googleapis.com` and `lh3.googleusercontent.com` |
-| `frontend/tailwind.config.js` | Modified | Brand design tokens (gold, burgundy, charcoal, surface, borders) and fonts (`Cinzel`, `Playfair Display`, `Plus Jakarta Sans`) |
-| `frontend/.env.example` | Created | Template for `NEXT_PUBLIC_API_BASE_URL` |
-| `frontend/.env.local` | Created | Local environment file (mirrors `.env.example`; not committed) |
-| `frontend/src/lib/constants.ts` | Created | Centralized `API_BASE_URL` (`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'`) |
-| `frontend/src/app/globals.css` | Modified | Global CSS design tokens, split-portal responsive styles, and utility classes |
-| `frontend/src/app/layout.tsx` | Modified | Root layout with Google font optimization (`Cinzel`, `Playfair Display`, `Plus Jakarta Sans`) |
-| `frontend/src/app/page.tsx` | Modified | Full platform landing page with links to `/login` and `/signup` |
-| `frontend/src/app/login/page.tsx` | Created | Split-screen luxury login page for Atelier accounts with quick demo aids and validation |
-| `frontend/src/app/signup/page.tsx` | Created | Split-screen registration page for Couples and Wedding Planners with terms acceptance |
-
-### 2.2 Backend Files Created
-
-| File / Directory | Type | Purpose |
-|---|---|---|
-| `backend/pyproject.toml` | Modified | Python project definition, dependencies (`fastapi`, `uvicorn`, `pymongo`, `pydantic-settings`), pytest config |
-| `backend/uv.lock` | Generated | Locked Python dependency versions |
-| `backend/.venv/` | Generated | Python virtual environment managed by uv |
-| `backend/.env.example` | Created | Template for MONGODB_URI, DATABASE_NAME, SECRET_KEY, CORS_ORIGINS |
-| `backend/.env` | Created | Local environment file (mirrors `.env.example`; not committed) |
-| `backend/app/main.py` | Modified | FastAPI app factory, CORS middleware, health check endpoint, auth router mount |
-| `backend/app/core/config.py` | Modified | Pydantic Settings: validates env vars, CORS origins, and configurable `cookie_secure` |
-| `backend/app/core/security.py` | Created | PBKDF2-HMAC-SHA256 (600,000 iterations) hashing and signed session token cryptography |
-| `backend/app/schemas/auth.py` | Created | Pydantic validation models for `RegisterRequest`, `LoginRequest`, `UserPublic`, `AuthResponse` |
-| `backend/app/api/v1/auth.py` | Created | Authentication router: `/register`, `/login`, `/me`, `/logout` |
-| `backend/app/db/session.py` | Modified | PyMongo client lifecycle, index creation, and environment-guarded demo seeding |
-| `backend/tests/` | Created | Automated test suite (`test_security.py`, `test_auth_schemas.py`, `test_health.py`) |
-
-### 2.3 Root-Level Files
-
-| File | Purpose |
-|---|---|
-| `README.md` | Project overview, architecture table, document hierarchy, scope clarifications, route map, setup instructions |
-| `.gitignore` | Git ignore rules |
-
-### 2.4 Project Documentation
-
-| File | Status |
-|---|---|
-| `docs/PRD.doc` | Existing — Product Requirements Document v1.0 |
-| `docs/SDD.doc` | Existing — System Design Document v1.2 |
-| `docs/DBDD.doc` | Existing — Database Design Document v1.0 |
-| `docs/API-DD.doc` | Existing — API Design Document v1.0 |
-| `docs/PROJECT_OVERVIEW.md` | Created (this session) — Consolidated project overview |
-| `docs/DEVELOPMENT_PROGRESS.md` | Created (this session) — This file |
+| **Current Stage** | **Phase 2 — Core Authentication & Editorial Scaffolding (Completed)** |
+| **Next Recommended Stage** | **Phase 3 — Platform Administration & Wedding Provisioning** |
+| **Overall Implementation Status** | Foundational full-stack architecture is established, verified, and operational locally. Backend authentication APIs (`/register`, `/login`, `/me`, `/logout`), PBKDF2 cryptography, HMAC signed session tokens, and MongoDB Atlas connectivity are fully functional. The frontend features haute couture split-screen editorial pages for landing, login, and registration. |
+| **Major Completed Milestones** | • Multi-tenant technical specifications approved and converted to Markdown (`docs/`).<br>• Next.js 15 App Router scaffolding with design tokens and Google Font optimization.<br>• FastAPI async application factory with CORS middleware and health endpoint.<br>• MongoDB Atlas live connection verified with index initialization and environment-guarded demo seeding.<br>• PBKDF2-HMAC-SHA256 password hashing (600,000 iterations) and HMAC session token cryptography.<br>• Full-stack authentication integration verified across API and client forms.<br>• Automated test suite passing with 10/10 pytest tests and 0 ESLint warnings. |
+| **Critical Blockers** | • **Dashboard Routes Missing:** Frontend `/login` currently redirects to `/` because `/admin` and `/dashboard` routes do not exist yet.<br>• **External Service Credentials:** Resend (email invitations) and Google Cloud Storage (private photo gallery) have no active API keys or buckets configured in the local development environment. |
+| **Next Milestone Focus** | Implement Platform Administrator wedding provisioning endpoints (`POST /api/v1/admin/weddings`) and basic shell pages for `/admin` and `/dashboard`. |
 
 ---
 
-## 3. Environment and Startup Verification
+## 2. Feature Implementation Matrix
 
-> Status definitions: **Not Started** | **In Progress** | **Passed** | **Failed** | **Blocked**
+> **Status Definitions:**
+> - **Completed:** Implemented, functionally integrated, and verified with tests or live execution.
+> - **Partially Implemented:** Functional implementation exists, but integrations, dependent UI, or sub-flows remain incomplete.
+> - **In Progress:** Actively under engineering development.
+> - **Not Started:** Designed in specifications (`PRD.md`, `SDD.md`, `API-DD.md`) but no codebase implementation exists.
+> - **Blocked:** Cannot proceed until upstream dependencies or credentials are provided.
+> - **Not Applicable:** Explicitly excluded from the approved V1 release scope.
+> - **Needs Verification:** Evidence is currently insufficient to confirm operational status.
 
-| Check | Status | Evidence / Notes |
-|---|---|---|
-| Frontend dependencies installed | **Passed** | `node_modules/` exists; `package-lock.json` present |
-| Frontend starts successfully | **Passed** | Verified responsive with HTTP 200 on `/`, `/login`, `/signup` |
-| Frontend production build succeeds | **Passed** | `npm run build` completed successfully, 0 lint warnings |
-| Backend dependencies installed | **Passed** | `.venv/` exists; `uv.lock` present; dev dependencies installed |
-| Backend starts successfully | **Passed** | Confirmed via pytest and ASGI client |
-| Health endpoint responds with `{"status":"ok"}` | **Passed** | Verified via automated integration test `tests/test_health.py` |
-| MongoDB connection verified | **Passed** | Verified via `ping` command using `AsyncMongoClient`; connected to `make-my-marriage-dev` on `make-my-marriage-cluster` |
-
----
-
-## 4. Feature Implementation Tracker
-
-| Feature / Module | Planned Functionality | Implementation Status | Testing Status | Relevant Files | Notes / Blockers |
+| Feature | Intended Behavior | Status | Evidence / File Paths | Remaining Work | Acceptance Criteria |
 |---|---|---|---|---|---|
-| **Health Check** | `GET /api/v1/health` returns `{"status":"ok"}` | Complete | Passed | `backend/app/main.py`, `backend/tests/test_health.py` | Verified 200 response |
-| **Authentication** | Register, Login, logout, current user (`/api/v1/auth/`); PBKDF2 password hashing; signed session tokens | Complete | Passed (10/10 tests) | `backend/app/api/v1/auth.py`, `backend/app/core/security.py`, `backend/app/schemas/auth.py` | Session cookies with configurable security |
-| **Login Page (`/login`)** | Split-screen luxury login form; quick demo credentials; responsive layout | Complete | Passed | `frontend/src/app/login/page.tsx` | Verified responsive and lint-free |
-| **Signup Page (`/signup`)** | Split-screen registration for Couples & Planners; responsive layout | Complete | Passed | `frontend/src/app/signup/page.tsx` | Form validation and auto-redirect |
-| **Platform Admin — Wedding Creation** | `POST /api/v1/admin/weddings`; create wedding records | Not Started | Not Started | — | Requires admin endpoints |
-| **Platform Admin — Manager Accounts** | `POST /api/v1/admin/managers`; create, list, update Managers | Not Started | Not Started | — | Requires auth module; password-setup email flow not finalized |
-| **Wedding Manager Dashboard** | `GET /api/v1/weddings/{id}/dashboard`; summaries (guests, RSVPs, tasks, events) | Not Started | Not Started | — | Requires all sub-modules |
-| **Wedding Setup (Manager)** | `PATCH /api/v1/weddings/{id}`; update wedding details from dashboard | Not Started | Not Started | — | Requires auth and wedding creation |
-| **Event Management** | CRUD for events; public event listing | Not Started | Not Started | — | Requires wedding module |
-| **Task Planner** | CRUD for tasks; status/priority tracking | Not Started | Not Started | — | Requires wedding module |
-| **Expense Tracker (Backend)** | CRUD for expenses; expense summary | Not Started | Not Started | — | UI feature deferred; backend data model may be implemented; see Section 5 |
-| **Guest Management** | CRUD for guests; guest list (paginated, searchable) | Not Started | Not Started | — | Guest contact data is private; never returned by public APIs |
-| **Digital Invitations** | Generate secure token; send invitation email via Resend | Not Started | Not Started | — | Resend not yet configured; token generation approach not implemented |
-| **RSVP — Token Validation** | Validate invitation token; return guest/wedding info | Not Started | Not Started | — | No OTP in V1 |
-| **RSVP — Submission** | Accept Yes/No RSVP; upsert one record per guest per wedding | Not Started | Not Started | — | |
-| **RSVP — Summary** | `GET /api/v1/weddings/{id}/rsvps/summary` | Not Started | Not Started | — | |
-| **Email Reminders** | Send reminder emails to selected guests | Not Started | Not Started | — | Requires Resend integration |
-| **QR Codes** | Generate/return QR code for public wedding website URL | Not Started | Not Started | — | QR generation library not yet chosen |
-| **Photo Gallery — Upload** | Signed GCS upload URL; confirm upload; save metadata | Not Started | Not Started | — | GCS bucket and credentials not yet configured |
-| **Photo Gallery — Album Management** | CRUD for photo albums | Not Started | Not Started | — | |
-| **Photo Gallery — Authorized Guest Access** | Validate invitation token; issue short-lived signed GCS URLs | Not Started | Not Started | — | Critical: slug alone must not grant access |
-| **Livestream Management** | Configure optional livestream URL for a wedding | Not Started | Not Started | — | Optional feature |
-| **Public Wedding Website (`/w/[slug]`)** | Frontend pages: public info, events, venue, QR code | Not Started | Not Started | — | No frontend routes exist yet beyond homepage placeholder |
-| **Login Page (`/login`)** | Shared Admin/Manager login form; role-based redirect | Not Started | Not Started | — | Route does not exist yet |
-| **Admin Dashboard (`/admin`)** | Platform admin UI | Not Started | Not Started | — | Route does not exist yet |
-| **Manager Dashboard (`/dashboard`)** | Wedding manager UI | Not Started | Not Started | — | Route does not exist yet |
-| **Guest Invitation Page (`/w/[slug]/invite/[token]`)** | RSVP form; token-based auth | Not Started | Not Started | — | Route does not exist yet |
-| **Private Gallery Page (`/w/[slug]/gallery`)** | Token-authorized gallery viewer | Not Started | Not Started | — | Route does not exist yet |
+| **Landing Page** | Editorial public landing page showcasing brand aesthetic, live preview, feature grid, and navigation links. | **Completed** | [frontend/src/app/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/page.tsx) | None for initial MVP. | Page renders responsively on port 3000 with interactive links to `/login` and `/signup`. |
+| **Login Page** | Luxury split-screen login page with form validation, quick demo aids, and unified access for all operator roles. | **Partially Implemented** | [frontend/src/app/login/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/login/page.tsx) | Post-login role-based redirect currently targets `/` instead of `/dashboard` or `/admin`. | Submitting valid credentials sets `session_token` cookie and routes to the appropriate dashboard. |
+| **Sign-up Page** | Self-service registration for Marrying Couples and Wedding Planners with account type selection and terms consent. | **Completed** | [frontend/src/app/signup/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/signup/page.tsx) | None for self-registration. | Valid submission creates user in MongoDB Atlas, displays success message, and routes to `/login`. |
+| **Form Validation** | Pre-flight regex checking for email format, password complexity rules, required fields, and terms acceptance. | **Completed** | [login/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/login/page.tsx), [signup/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/signup/page.tsx), [backend/app/schemas/auth.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/schemas/auth.py) | Form validation for upcoming wedding management forms. | Both client-side inline banners and backend `HTTP 422 Unprocessable Entity` responses function predictably. |
+| **Authentication Integration** | Full-stack handshake connecting frontend fetch calls to FastAPI auth endpoints with cookie exchange. | **Completed** | [login/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/login/page.tsx), [signup/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/signup/page.tsx), [backend/app/api/v1/auth.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/api/v1/auth.py) | Protected dashboard route guards. | Credentials submitted via UI successfully authenticate against MongoDB Atlas via FastAPI. |
+| **Session Management & Logout** | Stateful session tracking via signed HMAC tokens, HTTP-only cookies, `/me` profile retrieval, and cookie deletion on logout. | **Completed** | [backend/app/core/security.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/core/security.py), [backend/app/api/v1/auth.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/api/v1/auth.py) | Frontend logout button in dashboard headers. | `/api/v1/auth/me` returns current user doc; `/api/v1/auth/logout` clears `session_token` cookie. |
+| **Platform Admin Dashboard** | High-level overview of platform weddings, manager accounts, and platform health. | **Not Started** | Designed in `API-DD.md` Section 3; no frontend route | Build `/admin` route and `/api/v1/admin/*` endpoints. | Super-admin can view total weddings, system status, and manage manager accounts. |
+| **Manager Dashboard** | Wedding operational center displaying guest RSVPs, task checklists, and event timelines. | **Not Started** | Designed in `API-DD.md` Section 4; no frontend route | Build `/dashboard` route and `/api/v1/weddings/{id}/dashboard` API. | Authenticated manager views metrics strictly scoped to their assigned `weddingId`. |
+| **Wedding Creation & Setup** | Provisioning wedding records (couple names, slug, date, venue, coordinates) and assigning managers. | **Not Started** | Designed in `API-DD.md` Section 3 & 4 | Build `POST /api/v1/admin/weddings` and `PATCH /api/v1/weddings/{id}`. | Wedding records created with unique slug index enforcement. |
+| **Public Wedding Website** | Guest-facing portal at `/w/[slug]` displaying couple welcome message, venue details, and schedules. | **Not Started** | Route not yet created | Build dynamic App Router segment `frontend/src/app/w/[slug]/page.tsx` and public API. | Public visitors view published wedding details without logging in. |
+| **Event Planning & Schedules** | Sub-event management (Haldi, Mehendi, Sangeet, Ceremony, Reception) with times and visibility flags. | **Not Started** | Designed in `API-DD.md` Section 4 | Build `events` CRUD endpoints and manager schedule UI. | Manager can add/edit events; public events display on the public wedding page. |
+| **Task Planner** | Checklist tracker with priority levels (`low`, `med`, `high`), due dates, statuses, and assignees. | **Not Started** | Designed in `API-DD.md` Section 4 | Build `tasks` CRUD endpoints and dashboard UI. | Manager can toggle task completion and filter by priority. |
+| **Guest Management** | Contact directory for guests with email, phone, and invitation tracking status. | **Not Started** | Designed in `API-DD.md` Section 4 | Build `guests` CRUD endpoints and manager table UI. | Guest list is searchable and private; never exposed to unauthenticated users. |
+| **Digital Invitations** | Dispatching personalized invitation emails containing secure single-use invitation tokens via Resend. | **Blocked** | Resend API key and client not configured | Configure Resend, author email templates, build invitation sending endpoint. | Manager can trigger invitations; guest receives email with unique link. |
+| **Invitation Token Handling** | Cryptographic token generation, SHA-256 hashing before persistence, and URL validation. | **Not Started** | Security model approved in `SDD.md` | Implement token hashing and validation endpoints. | Backend validates token hash and rejects revoked or expired tokens. |
+| **RSVP Workflow** | One-click Yes/No response submission via token link without requiring guest login. | **Not Started** | Route `w/[slug]/invite/[token]` not yet created | Build RSVP landing route and upsert API (`POST /api/v1/invitations/rsvp`). | Guest submits attendance response; RSVP record is upserted and dashboard counts update. |
+| **QR Code Generation** | Dynamic QR code directing guests to the public wedding website URL. | **Not Started** | Endpoint designed in `API-DD.md` Section 5 | Select QR library (e.g. `qrcode` in Python) and build endpoint. | `GET /api/v1/public/weddings/{slug}/qr` returns valid PNG QR code image. |
+| **Private Gallery & Albums** | Album-organized photo displays restricted strictly to authorized guests holding valid tokens. | **Not Started** | Route not yet created | Build gallery UI and authorization token check. | Accessing `/w/[slug]/gallery` without a valid token returns an authorization prompt. |
+| **Photo Upload & Retrieval** | Direct-to-GCS upload via signed URLs and secure retrieval via short-lived download URLs. | **Blocked** | GCS bucket and service account credentials not configured | Provision bucket, install `google-cloud-storage`, build signed URL endpoints. | High-res photos upload directly to GCS without passing through backend memory. |
+| **Livestream Information** | Configuration and public display of external livestream link (e.g., YouTube Live). | **Not Started** | Schema approved in `DBDD.md` | Build livestream settings form in manager dashboard. | When enabled, public wedding page displays prominent stream link. |
+| **Notifications & Reminders** | Email reminders sent to non-responding guests prior to RSVP deadlines. | **Blocked** | Depends on Resend integration | Build reminder dispatch API and notification history logging. | Manager can trigger reminders to filtered unconfirmed guest lists. |
+| **Backend APIs** | Asynchronous REST endpoints organized under `/api/v1` with Pydantic validation. | **Partially Implemented** | [backend/app/main.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/main.py), [backend/app/api/v1/auth.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/api/v1/auth.py) | Remaining resource routers (admin, weddings, public, invitations). | All active endpoints return standardized JSON schemas and appear in Swagger UI. |
+| **Database Integration** | Asynchronous MongoDB Atlas communication with connection pooling, indexes, and models. | **Completed** | [backend/app/db/session.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/db/session.py) | Add indexes for upcoming collections (`weddings`, `events`, `invitations`). | Database pings successfully; `users` collection persists records with unique email index. |
+| **Error Handling** | Standardized JSON error envelopes, HTTP exception mapping, and friendly UI error banners. | **Completed** | [backend/app/api/v1/auth.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/api/v1/auth.py), [login/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/login/page.tsx) | Global FastAPI exception handler middleware. | API errors return clear, descriptive error details without leaking stack traces. |
+| **Responsive Design & Accessibility** | Mobile-first layouts, semantic HTML, ARIA attributes, and high-contrast editorial styling. | **Completed** | [frontend/src/app/globals.css](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/globals.css), [login/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/login/page.tsx), [signup/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/signup/page.tsx) | Apply same standards to future dashboard components. | All existing pages adapt smoothly from 375px mobile viewports to ultra-wide displays. |
+| **Automated Tests** | Unit tests, schema checks, health checks, and linting suites. | **Partially Implemented** | [backend/tests/](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/tests/) (10 tests passing); [frontend/eslint.config.mjs](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/eslint.config.mjs) | Frontend component tests, live DB integration tests, and E2E browser tests. | `pytest` and `npm run lint` execute cleanly with 0 errors. |
+| **Deployment Configuration** | Cloud Run containerization, custom domain DNS, CDN, and production TLS. | **Not Started** | Proposed in `SDD.md` Section 9 | Dockerfiles, Cloud Build configurations, and domain mapping. | Automated CI/CD deploys frontend and backend containers to production. |
+| **Expense Tracker** | Expense tracking and budget allocation module. | **Not Applicable** | Documented in `DBDD.md`; excluded from V1 UI | None for V1 release. | Feature remains strictly excluded from V1 release scope. |
 
 ---
 
-## 5. Technical Decisions
+## 3. Completed Work
 
-### 5.1 Confirmed Decisions
+The following items have been fully implemented, verified, and checked into the repository:
 
-| Decision Area | Decision | Reason | Source |
+### 3.1 Backend Authentication & Security Subsystem
+- **FastAPI Lifespan & App Factory:** Configured in [backend/app/main.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/main.py) with CORS middleware, interactive Swagger documentation (`/api/docs`), and health endpoint (`/api/v1/health`).
+- **Configuration Management:** [backend/app/core/config.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/core/config.py) validates required environment variables at boot using Pydantic Settings.
+- **OWASP-Compliant Password Cryptography:** [backend/app/core/security.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/core/security.py) implements PBKDF2-HMAC-SHA256 with 600,000 iterations and 16-byte random salt, complete with constant-time verification.
+- **Signed Session Token Cryptography:** Implements `<user_id>.<timestamp>.<signature>` using HMAC-SHA256, protecting against payload tampering and supporting configurable expirations.
+- **Authentication Endpoints:**
+  - `POST /api/v1/auth/register`: Validates email and password, creates user in MongoDB Atlas, and issues session cookie.
+  - `POST /api/v1/auth/login`: Verifies credentials, updates `lastLoginAt`, and issues session cookie.
+  - `GET /api/v1/auth/me`: Resolves user profile from `session_token` cookie or `Authorization: Bearer` header.
+  - `POST /api/v1/auth/logout`: Invalidates session and clears cookie.
+- **Database Connection & Demo Seeding:** [backend/app/db/session.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/app/db/session.py) connects to MongoDB Atlas using `pymongo.AsyncMongoClient`, establishes a unique index on `email`, and seeds demo accounts in non-production environments.
+
+### 3.2 Frontend Editorial Pages & Brand Identity
+- **Design Token System:** [frontend/src/app/globals.css](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/globals.css) and [tailwind.config.js](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/tailwind.config.js) establish brand tokens for gold, burgundy, surface, and charcoal.
+- **Typography Integration:** [frontend/src/app/layout.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/layout.tsx) configures `next/font/google` for `Cinzel`, `Playfair Display`, and `Plus Jakarta Sans`.
+- **Editorial Landing Page:** [frontend/src/app/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/page.tsx) renders the platform showcase with responsive cards and direct links to `/login` and `/signup`.
+- **Split-Screen Atelier Login Portal:** [frontend/src/app/login/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/login/page.tsx) features pre-set demo credential buttons, client validation, animated loading states, and full API integration.
+- **Split-Screen Registration Portal:** [frontend/src/app/signup/page.tsx](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/app/signup/page.tsx) provides role selection between `couple` and `planner`, validation for password complexity, and terms consent.
+- **Centralized Constants:** [frontend/src/lib/constants.ts](file:///Users/as-mac-1118/Documents/make-my-marriage/frontend/src/lib/constants.ts) centralizes `API_BASE_URL` with environment override support.
+
+---
+
+## 4. Current Work in Progress
+
+| Work Item | Intended Outcome | Current Status | Dependencies / Blockers |
 |---|---|---|---|
-| Frontend framework | Next.js 15 (App Router) | Multi-page SSR/SSG capabilities; established ecosystem | SDD v1.2; package.json |
-| Frontend language | TypeScript (strict mode) | Type safety across the codebase | tsconfig.json |
-| Frontend styling | Vanilla CSS with design tokens in `globals.css` | Full control; no framework lock-in | globals.css |
-| Backend framework | FastAPI (Python 3.12) | Async support; automatic OpenAPI docs; pydantic validation | SDD v1.2; pyproject.toml |
-| Backend package manager | uv | Modern, fast Python dependency manager | pyproject.toml; uv.lock |
-| Database | MongoDB Atlas | Flexible document schema for wedding data | SDD v1.2; .env.example |
-| Database driver | PyMongo Async (pymongo[asyncio]) | Native async support matching FastAPI's async model | pyproject.toml |
-| Media storage | Google Cloud Storage | Managed object storage; signed URL support for private access | SDD v1.2; next.config.mjs |
-| API versioning | All endpoints under `/api/v1` | Forward-compatible versioning | README.md; main.py |
-| OTP — deferred | OTP verification excluded from V1 | PRD v1.0 required it; SDD v1.2, DBDD v1.0, API-DD v1.0 excluded it. Decision: deferred to future release | README.md |
-| Expense Tracker — deferred | Expense UI excluded from V1 product scope | PRD excludes it; SDD/DBDD include the data model | README.md |
-| Guest auth model | No guest accounts; invitation token only | Simplicity and privacy; no OTP in V1 | SDD v1.2; README.md |
-| Wedding data isolation | Every query scoped by weddingId from authenticated session | Prevents cross-wedding data leakage | DBDD v1.0; SDD v1.2 |
-| Password storage | Secure hash required; plaintext forbidden | PBKDF2-HMAC-SHA256 (600,000 iterations) with constant-time verification | security.py; DBDD v1.0 |
-| Authentication mechanism | HTTP-only SameSite=Lax cookie (`session_token`) with Bearer token fallback | Secure against XSS; provides API flexibility | auth.py; security.py |
-| Session token format | Signed `<user_id>.<timestamp>.<signature>` via HMAC-SHA256 | Stateless signature verification; timestamp replay protection | security.py |
-| Demo data seeding | Environment-guarded (`ENVIRONMENT != "production"`) | Protects production databases from accidental default credential creation | session.py |
-| Invitation token storage | Store hash only; raw token never persisted | Security baseline | DBDD v1.0; API-DD v1.0 |
-| Gallery access control | Slug alone insufficient; requires valid invitation token | README.md security note | README.md; DBDD v1.0 |
+| **Post-Login Role Redirection** | Direct authenticated users to their corresponding dashboard (`/admin` for admin, `/dashboard` for manager/couple). | Login currently routes to `/` as a temporary fallback. | Blocked by missing `/admin` and `/dashboard` frontend page routes. |
+| **Protected Route Middleware** | Frontend Next.js middleware checking `session_token` cookie before allowing access to dashboard paths. | Auth endpoints exist in backend; Next.js middleware file not yet created. | Needs dashboard route shells to protect. |
 
-### 5.2 Pending Decisions
+---
 
-| Decision Area | Options | Notes |
+## 5. Pending Features and Tasks
+
+The remaining work is organized into 5 sequential development phases:
+
+### Phase 1 — Foundation and Authentication Follow-ups
+- [ ] Create Next.js route protection middleware (`frontend/src/middleware.ts`) to intercept unauthenticated requests to `/admin` and `/dashboard`.
+- [ ] Build shared navigation header component with active user profile badge and logout button.
+- [ ] Add backend role-verification dependencies (`require_admin`, `require_manager`).
+
+### Phase 2 — Wedding and Manager Workflows
+- [ ] Implement Platform Administrator endpoints:
+  - `POST /api/v1/admin/weddings`: Provision new wedding records.
+  - `GET /api/v1/admin/weddings`: List platform weddings with manager assignments.
+  - `POST /api/v1/admin/managers`: Onboard wedding managers.
+- [ ] Build `/admin` dashboard frontend interface.
+- [ ] Implement Wedding Manager endpoints:
+  - `GET /api/v1/weddings/{id}/dashboard`: Aggregate summary metrics.
+  - `PATCH /api/v1/weddings/{id}`: Update wedding details and venue information.
+- [ ] Build `/dashboard` manager frontend interface.
+- [ ] Implement Event Management CRUD endpoints (`/api/v1/weddings/{id}/events`).
+- [ ] Implement Task Planner CRUD endpoints (`/api/v1/weddings/{id}/tasks`).
+
+### Phase 3 — Guest and Invitation Workflows
+- [ ] Implement Guest Management CRUD endpoints (`/api/v1/weddings/{id}/guests`).
+- [ ] Build guest directory UI inside manager dashboard (search, filter, pagination).
+- [ ] Configure Resend email service integration (`backend/app/services/email.py`).
+- [ ] Implement cryptographic invitation token generation and SHA-256 storage (`invitations` collection).
+- [ ] Implement invitation dispatch endpoint (`POST /api/v1/weddings/{id}/invitations`).
+- [ ] Build Guest RSVP landing route (`frontend/src/app/w/[slug]/invite/[token]/page.tsx`).
+- [ ] Implement token validation (`GET /api/v1/invitations/validate`) and RSVP submission (`POST /api/v1/invitations/rsvp`).
+
+### Phase 4 — Public Wedding Website and Gallery
+- [ ] Build public wedding showcase route (`frontend/src/app/w/[slug]/page.tsx`).
+- [ ] Implement public wedding details endpoint (`GET /api/v1/public/weddings/{slug}`).
+- [ ] Implement dynamic QR code generator endpoint (`GET /api/v1/public/weddings/{slug}/qr`).
+- [ ] Provision Google Cloud Storage bucket and configure service account credentials.
+- [ ] Implement photo upload flow (pre-signed GCS upload URL and metadata registration).
+- [ ] Build token-authorized private photo gallery (`frontend/src/app/w/[slug]/gallery/page.tsx`).
+- [ ] Implement short-lived signed GCS download URL generator for authorized guests.
+
+### Phase 5 — Testing and Production Readiness
+- [ ] Add integration tests for all backend routes using an isolated test database.
+- [ ] Add frontend component tests and end-to-end user journey tests (e.g., Playwright).
+- [ ] Conduct security audit on token verification and data isolation boundaries.
+- [ ] Author production Dockerfiles for frontend and backend.
+- [ ] Set up Google Cloud Run deployment pipeline via GitHub Actions.
+
+---
+
+## 6. Prioritized Next Tasks
+
+| Priority | Task Name | Why Needed | Prerequisite | Expected Outcome | Acceptance Criteria | Relevant Files |
+|---|---|---|---|---|---|---|
+| **P0** | **Admin Wedding Creation API** | Foundational requirement for multi-wedding architecture; all subsequent modules depend on existing wedding records. | Auth module (Completed) | `POST /api/v1/admin/weddings` provisions wedding records with unique slug. | Endpoint accepts couple names, date, venue, creates doc in `weddings`, returns 201. | `backend/app/api/v1/admin.py`, `backend/app/schemas/wedding.py` |
+| **P0** | **Manager Dashboard Shell Route** | Provides destination for post-login redirects and operational container for managers. | Login page (Completed) | Frontend route `/dashboard` renders authenticated manager shell. | Accessing `/dashboard` when authenticated displays welcome card and sign-out button. | `frontend/src/app/dashboard/page.tsx` |
+| **P0** | **Platform Admin Shell Route** | Provides landing view for super-administrators to create weddings. | Login page (Completed) | Frontend route `/admin` renders admin interface. | Admin users can log in and view platform management controls. | `frontend/src/app/admin/page.tsx` |
+| **P1** | **Connect Login Redirects** | Connects verified login flow to newly created dashboard shells. | `/admin` & `/dashboard` shells | Successful login redirects to `/admin` or `/dashboard` based on user role. | Manager login routes to `/dashboard`; Admin login routes to `/admin`. | `frontend/src/app/login/page.tsx` |
+| **P1** | **Public Wedding Route (`/w/[slug]`)** | Enables couples to preview public-facing wedding information. | Wedding Creation API | Public route renders couple names, dates, and venue details without authentication. | Navigating to `/w/test-wedding` returns HTTP 200 with formatted wedding details. | `frontend/src/app/w/[slug]/page.tsx`, `backend/app/api/v1/public.py` |
+| **P2** | **Event Management CRUD** | Allows managers to configure ceremony and reception schedules. | Wedding Creation API | Endpoints and UI to create, update, and list sub-events. | Events persist in `events` collection and appear on public wedding page if `isPublic=true`. | `backend/app/api/v1/events.py`, `frontend/src/app/dashboard/events/` |
+| **P2** | **Guest List Management** | Allows managers to build and curate their guest roster. | Manager Dashboard | Endpoints and UI to add, import, and edit guest records. | Guests persist in `guests` collection scoped to `weddingId`. | `backend/app/api/v1/guests.py`, `frontend/src/app/dashboard/guests/` |
+
+---
+
+## 7. Testing and Validation Status
+
+### 7.1 Automated Test Execution Summary (Verified)
+
+| Test Suite | Location | Tests Executed | Passed | Failed | Notes |
+|---|---|---|---|---|---|
+| **Backend Health Check** | [backend/tests/test_health.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/tests/test_health.py) | 1 | 1 | 0 | Confirmed `GET /api/v1/health` returns `{"status":"ok"}` |
+| **Password Cryptography** | [backend/tests/test_security.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/tests/test_security.py) | 5 | 5 | 0 | Tested PBKDF2 hash format, verification, invalid hash handling, HMAC token creation, tamper detection, and expiration. |
+| **Auth Schema Validation** | [backend/tests/test_auth_schemas.py](file:///Users/as-mac-1118/Documents/make-my-marriage/backend/tests/test_auth_schemas.py) | 4 | 4 | 0 | Validated registration schemas, password min-length rules, login models, and serialization. |
+| **Frontend Code Quality** | `frontend/eslint.config.mjs` | Full repository | Passed | 0 | `npm run lint` reported 0 errors and 0 warnings. |
+
+### 7.2 Live Verification Results
+- **MongoDB Atlas Ping:** Verified live via `AsyncMongoClient.admin.command('ping')` resulting in `{'ok': 1}`.
+- **Port Liveness:**
+  - Next.js: Active on port 3000 (HTTP 200 on `/`, `/login`, `/signup`).
+  - FastAPI: Active on port 8000 (`{"status":"ok"}` on `/api/v1/health`).
+- **Production Build:** `npm run build` executed successfully without compilation errors.
+
+### 7.3 Testing Gaps
+- **No Frontend Automated Tests:** Jest, Vitest, and React Testing Library are not currently installed or configured.
+- **No Live DB Integration Tests:** Existing pytest tests use mocks or in-memory fixtures; integration tests executing full HTTP round-trips against MongoDB Atlas remain to be written.
+- **No End-to-End (E2E) Browser Tests:** Automated browser journeys (e.g. Playwright) for user registration through login are not yet established.
+
+---
+
+## 8. Known Issues and Blockers
+
+| Issue ID | Description | Impact | Reproduction Steps | Suggested Next Action | Status |
+|---|---|---|---|---|---|
+| **ISSUE-001** | Running `pytest` from repository root fails with Pydantic validation error (`mongodb_uri missing`). | Developers running `pytest backend/tests` from root encounter test abort. | Run `pytest` from repository root. Root directory lacks `.env`, causing `app.core.config.Settings` to fail. | Run `pytest` from within the `backend/` directory, or configure `pytest.ini` with `env_files = backend/.env`. | **Confirmed (Workaround available)** |
+| **ISSUE-002** | Login page redirects to `/` on success instead of `/dashboard`. | Successful sign-in leaves operators on the landing page. | Sign in at `http://localhost:3000/login` with valid credentials. | Create `/dashboard` and `/admin` routes and update `router.push()` logic in `login/page.tsx`. | **Confirmed** |
+| **BLOCKER-001** | GCS Bucket credentials missing. | Photo upload and private gallery signed URL features cannot be executed locally. | Attempting to call GCS SDK fails due to missing service account JSON. | Provision development GCS bucket and configure `GOOGLE_APPLICATION_CREDENTIALS`. | **Confirmed Blocker** |
+| **BLOCKER-002** | Resend API key missing. | Digital invitations cannot be dispatched via email. | Attempting to send invitations fails. | Obtain development API key from Resend and configure `RESEND_API_KEY` in `backend/.env`. | **Confirmed Blocker** |
+
+---
+
+## 9. Infrastructure and Deployment Readiness
+
+| Infrastructure Component | Current Environment State | Production Deployment State |
 |---|---|---|
-| Admin role boundary | Platform Administrator only vs. wedding-level Admin supervisory role | SDD v1.2 describes both; boundary not finalized |
-| Invitation expiration policy | No expiry vs. time-limited | Not yet specified |
-| Guest gallery access recovery | Action when guest loses invitation link | Not yet specified |
-| Guest email field | Mandatory or optional | Email needed for invitation flow; behavior when absent not defined |
-| Hosting platform | Cloud Run vs. Compute Engine VM | Pending |
-| Email provider configuration | Resend proposed; not yet set up | Requires API key and account |
-| QR code generation library | Not yet chosen | — |
-| Production domain | Not yet specified | — |
+| **Database** | **Configured & Verified:** MongoDB Atlas cluster (`make-my-marriage-cluste.q54gv5h.mongodb.net`, db: `make-my-marriage-dev`) | **Planned:** Atlas dedicated cluster with automated backups and VPC peering |
+| **Backend Server** | **Active Locally:** Uvicorn dev server running on port 8000 | **Planned:** Google Cloud Run serverless container runtime |
+| **Frontend Server** | **Active Locally:** Next.js dev server running on port 3000 | **Planned:** Google Cloud Run or Google Cloud VM container |
+| **Environment Configuration** | **Configured:** Local `.env` and `.env.local` files present | **Planned:** Google Cloud Secret Manager |
+| **Media Storage** | **Not Configured:** GCS bucket not yet provisioned | **Planned:** Private Google Cloud Storage bucket with signed URL policies |
+| **Domain & HTTPS** | **Local Development:** `http://localhost` | **Planned:** Custom domain with automated Cloud Managed TLS |
+| **CI/CD Automation** | **Not Configured:** Local manual git commits | **Planned:** GitHub Actions pipeline running lint, pytest, and container deploy |
+| **Monitoring & Logging** | **Console Output Only:** Uvicorn and Next.js terminal logs | **Planned:** Google Cloud Logging and Error Reporting |
 
 ---
 
-## 6. Issues and Resolutions
+## 10. Recommended Next Development Session
 
-| Date Discovered | Description | Root Cause | Resolution |
-|---|---|---|---|
-| 2026-10-28 | Unused `handleRoleSwitch` variable warning in `frontend/src/app/login/page.tsx` | Legacy role toggle state retained after adopting unified Atelier login badge | Removed orphaned function and unified form submission; `npm run lint` passes with 0 warnings |
-| 2026-10-28 | Hardcoded API endpoints (`http://localhost:8000`) across frontend auth pages | Scattered fetch calls | Centralized `API_BASE_URL` in `frontend/src/lib/constants.ts` with `NEXT_PUBLIC_API_URL` override support |
-| 2026-10-28 | Raw `<img>` elements triggering Next.js lint warnings | Missing Next.js `<Image>` usage for remote photography | Migrated to Next.js `<Image fill priority ... />` with `lh3.googleusercontent.com` added to `next.config.mjs` |
+To maintain velocity and preserve technical alignment, the next engineering session should execute these 5 tasks in strict dependency order:
 
----
+1. **Task 1 — Implement Platform Admin Wedding API:**
+   - Create `backend/app/schemas/wedding.py` defining `WeddingCreate` and `WeddingPublic`.
+   - Create `backend/app/api/v1/admin.py` with `POST /api/v1/admin/weddings` to insert wedding documents into MongoDB with unique slug validation.
+   - Mount router in `backend/app/main.py`.
 
-## 7. Development Milestones
+2. **Task 2 — Create Manager Dashboard Shell Route:**
+   - Create `frontend/src/app/dashboard/page.tsx` with high-level summary cards (Guests, RSVPs, Events, Tasks) and sign-out button.
+   - Ensure the layout adheres to the existing Atelier theme tokens (`Cinzel`, burgundy, gold).
 
-| Date | Milestone | Notes |
-|---|---|---|
-| Date not recorded | Four source specification documents created | PRD.doc v1.0, SDD.doc v1.2, DBDD.doc v1.0, API-DD.doc v1.0 |
-| Date not recorded | Scope clarifications documented in README.md | OTP deferred; Expense Tracker UI deferred; gallery authorization approach defined |
-| Date not recorded | Frontend scaffolding created | Next.js 15, React 19, TypeScript 5, Vanilla CSS design tokens |
-| Date not recorded | Backend scaffolding created | FastAPI, Python 3.12, PyMongo Async, pydantic-settings, uv |
-| Date not recorded | Health check endpoint implemented | `GET /api/v1/health` returns `{"status":"ok"}` |
-| Date not recorded | CSS design token system defined | globals.css: colors, typography, spacing, shadows, transitions |
-| 2026-10-27 | PROJECT_OVERVIEW.md and DEVELOPMENT_PROGRESS.md created | Initial documentation pass based on source documents and workspace inspection |
-| 2026-10-28 | Core Full-Stack Authentication & Editorial Pages Implemented | Backend auth router (`/register`, `/login`, `/me`, `/logout`), PBKDF2 cryptography, HMAC session tokens, luxury split-screen `/login` & `/signup` pages, 10/10 pytest passing, 0 ESLint warnings, production build verified |
+3. **Task 3 — Create Platform Admin Shell Route:**
+   - Create `frontend/src/app/admin/page.tsx` displaying a wedding provisioning form.
 
----
+4. **Task 4 — Update Post-Login Routing Logic:**
+   - In `frontend/src/app/login/page.tsx`, inspect `data.data.user.role`.
+   - Redirect `admin` users to `/admin` and `manager`, `couple`, or `planner` users to `/dashboard`.
 
-## 8. Next Steps
-
-The following tasks are prioritized for the upcoming development phases.
-
-### Priority 1 — Environment Verification (Completed)
-
-- [x] Confirm the frontend dev server renders the homepage correctly in a browser
-- [x] Start the backend and verify `GET http://localhost:8000/api/v1/health` returns `{"status":"ok"}`
-- [x] Verify Swagger UI loads at `http://localhost:8000/api/docs`
-- [x] Connect to MongoDB Atlas cluster and verify connection via AsyncMongoClient
-- [x] Run `npm run build` in `frontend/` to verify production build succeeds (passed 6/6 static routes)
-- [x] Update the "Environment and Startup Verification" table in this document with results
-
-### Priority 2 — Authentication Module (Completed)
-
-- [x] Finalize authentication mechanism (HTTP-only SameSite=Lax cookie with Bearer token fallback)
-- [x] Implement `POST /api/v1/auth/register` (couple and planner account creation)
-- [x] Implement `POST /api/v1/auth/login` with credential validation and PBKDF2 hash check
-- [x] Implement `POST /api/v1/auth/logout`
-- [x] Implement `GET /api/v1/auth/me`
-- [x] Create the `users` MongoDB collection with unique index on `email`
-- [x] Create the `/login` frontend page with luxury split-screen design, quick demo aids, and unified access
-- [x] Create the `/signup` frontend page with account type selection (`couple`, `planner`) and terms consent
-- [x] Add automated pytest test suite (`test_security.py`, `test_auth_schemas.py`, `test_health.py` - 10/10 passing)
-
-### Priority 3 — Platform Administration & Dashboard
-
-- [ ] Implement `POST /api/v1/admin/weddings` (create wedding record)
-- [ ] Implement `GET /api/v1/admin/weddings` (list weddings)
-- [ ] Implement `POST /api/v1/admin/managers` (create Manager account with activation email)
-- [ ] Create the `/admin` dashboard frontend page
-
-### Priority 4 — Wedding Setup and Public Website
-
-- [ ] Implement public wedding API (`GET /api/v1/public/weddings/{slug}`)
-- [ ] Implement `PATCH /api/v1/weddings/{id}` (update wedding details)
-- [ ] Create the `/w/[slug]` frontend route (public wedding website)
-
-### Priority 5 — Events, Tasks, and Guest Management
-
-- [ ] Implement event CRUD APIs and public event listing
-- [ ] Implement task CRUD APIs
-- [ ] Implement guest CRUD APIs (private; management access only)
-- [ ] Create corresponding frontend UI for Manager dashboard
-
-### Priority 6 — Invitations and RSVP
-
-- [ ] Implement invitation token generation (cryptographically secure)
-- [ ] Configure Resend email integration
-- [ ] Implement invitation sending API
-- [ ] Implement token validation endpoint
-- [ ] Implement RSVP submission API (Yes / No; upsert)
-- [ ] Create `/w/[slug]/invite/[token]` frontend RSVP page
-
-### Priority 7 — Photo Gallery
-
-- [ ] Provision GCS bucket with private access controls
-- [ ] Implement signed upload URL generation
-- [ ] Implement upload confirmation and metadata saving
-- [ ] Implement authorized gallery access (token-based signed URL issuance)
-- [ ] Create `/w/[slug]/gallery` frontend page
-
-### Priority 8 — QR Codes, Livestream, and Reminders
-
-- [ ] Choose and integrate a QR code generation library
-- [ ] Implement QR code endpoint
-- [ ] Implement livestream configuration and public display
-- [ ] Implement reminder email API
+5. **Task 5 — Build Dynamic Public Wedding Route:**
+   - Create `frontend/src/app/w/[slug]/page.tsx` and `backend/app/api/v1/public.py` (`GET /api/v1/public/weddings/{slug}`).
+   - Verify public visitors can view couple names and wedding dates without logging in.
 
 ---
 
-## 9. Instructions for Future Developers and AI Assistants
+## 11. Progress Update Rules
 
-These rules must be followed throughout development to maintain project integrity and avoid losing context.
+Future engineers and AI assistants must follow these rules when updating this document:
 
-### 9.1 Before Starting Any Work
-
-1. **Read `docs/PROJECT_OVERVIEW.md` before making significant changes.** It is the consolidated reference for project requirements, architecture, roles, and confirmed decisions.
-2. **Consult the relevant original design document before implementing a feature.** `docs/SDD.doc` covers architecture, `docs/DBDD.doc` covers the database schema, and `docs/API-DD.doc` covers endpoint specifications.
-3. **Inspect the actual code before updating progress.** Do not assume a feature is built because it appears in a design document. Verify that the relevant files and logic actually exist.
-
-### 9.2 During Development
-
-4. **Do not implement OTP in V1.** This is a confirmed deferred decision. See `docs/PROJECT_OVERVIEW.md` Section 13.3.
-5. **Do not build the Expense Tracker UI in V1.** The backend data model may be implemented; the user-facing UI is deferred. See `docs/PROJECT_OVERVIEW.md` Section 13.4.
-6. **Enforce wedding-level data isolation in every backend query.** Always scope by `weddingId` derived from the authenticated session, never from client-supplied data.
-7. **Never store raw invitation tokens.** Store only the hash. The raw token exists only in the email and in the URL when the guest opens it.
-8. **Gallery access requires a valid invitation token, not just the wedding slug.** Enforce this at the API level.
-9. **Do not modify `docs/PRD.doc`, `docs/SDD.doc`, `docs/DBDD.doc`, or `docs/API-DD.doc`.** These are read-only source documents.
-
-### 9.3 After Development Work
-
-10. **Update this progress document after meaningful development work.** Add new milestones with accurate dates, update feature statuses, and record verified environment checks.
-11. **Record implementation status and testing status separately.** A feature is not complete until both implementation and testing are confirmed.
-12. **Never mark a feature as complete without evidence.** "In Progress" or "Not Started" is always acceptable when uncertain.
-13. **Record issues as they arise.** Include the date discovered, a description, the root cause, and the resolution or current workaround.
-
-### 9.4 When Specifications Conflict
-
-14. **Preserve existing requirements and ask for clarification when specifications conflict.** Do not silently choose one interpretation. Record the conflict and the agreed resolution in this document and in `PROJECT_OVERVIEW.md`.
-15. **Where source documents disagree, later technical documents (SDD v1.2, DBDD v1.0, API-DD v1.0) supersede PRD v1.0.** This is documented in `README.md` under "Specification Precedence."
+1. **Update After Every Feature:** Update the feature matrix, milestones, and backlog whenever code is merged or verified.
+2. **Never Mark Complete Without Evidence:** A feature is only *Completed* when both implementation and automated/manual testing have passed. Provide exact file paths as evidence.
+3. **Record All New Blockers:** Document external service requirements, API key gaps, or breaking changes immediately under Section 8.
+4. **Preserve Specification Scope:** Respect confirmed deferred items (No guest accounts, No SMS/OTP in V1, No Expense Tracker UI in V1). Do not change approved architecture specifications without explicit owner consent.
+5. **Keep Overview Document Distinct:** Maintain `PROJECT_OVERVIEW.md` as the high-level architectural reference, and use `DEVELOPMENT_PROGRESS.md` as the living progress tracker.
