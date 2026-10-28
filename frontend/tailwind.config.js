@@ -65,7 +65,23 @@ module.exports = {
         "on-tertiary-container": "#4c3800",
         "on-secondary": "#ffffff",
         "primary": "#1E1A18",
-        "gold-luminous": "#D4AF37"
+        "gold-luminous": "#D4AF37",
+        brand: {
+          ivory: '#FCF9F4',
+          surface: '#FDFBF7',
+          surfaceAlt: '#F5F0E8',
+          gold: '#C5A059',
+          goldLight: '#E8D5B5',
+          goldMuted: '#DFC8A0',
+          burgundy: '#581825',
+          burgundyDark: '#3E1019',
+          burgundyHover: '#49131E',
+          roseMuted: '#EADCDA',
+          roseAccent: '#D9B4AF',
+          charcoal: '#221C1D',
+          borderGold: 'rgba(197, 160, 89, 0.28)',
+          borderGoldLight: 'rgba(197, 160, 89, 0.16)'
+        }
       },
       borderRadius: {
         "DEFAULT": "0.25rem",
@@ -74,8 +90,11 @@ module.exports = {
         "full": "9999px"
       },
       fontFamily: {
-        playfair: ["'Playfair Display'", "serif"],
-        jakarta: ["'Plus Jakarta Sans'", "sans-serif"],
+        playfair: ["var(--font-playfair)", "'Playfair Display'", "serif"],
+        serif: ["var(--font-playfair)", "'Playfair Display'", "serif"],
+        cinzel: ["var(--font-cinzel)", "'Cinzel'", "serif"],
+        jakarta: ["var(--font-jakarta)", "'Plus Jakarta Sans'", "sans-serif"],
+        sans: ["var(--font-jakarta)", "'Plus Jakarta Sans'", "sans-serif"],
         "headline-lg-mobile": ["'Playfair Display'", "serif"],
         "label-lg": ["'Plus Jakarta Sans'", "sans-serif"],
         "headline-lg": ["'Playfair Display'", "serif"],

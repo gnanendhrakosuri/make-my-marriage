@@ -89,14 +89,12 @@
 | Check | Status | Evidence / Notes |
 |---|---|---|
 | Frontend dependencies installed | **Passed** | `node_modules/` exists; `package-lock.json` present |
-| Frontend starts successfully | **In Progress** | User is running `npm run dev` in `frontend/` (confirmed by active terminal session). Fully passing has not been verified by a health check or screenshot. |
-| Frontend production build succeeds | **Not Started** | `npm run build` not yet executed |
-| Backend dependencies installed | **Passed** | `.venv/` exists; `uv.lock` present |
-| Backend starts successfully | **Not Started** | `uvicorn app.main:app --reload` not yet run and confirmed |
-| Health endpoint responds with `{"status":"ok"}` | **Not Started** | Requires backend to be running |
-| MongoDB connection verified | **Not Started** | Requires backend startup with a valid `MONGODB_URI` in `.env` |
-
-> **Note:** The user's active terminal shows `npm run dev` running in the frontend directory for over 8 minutes, suggesting the dev server is likely running. However, successful rendering has not been independently verified in this session.
+| Frontend starts successfully | **Passed** | Verified responsive with HTTP 200 on `/`, `/login`, `/signup` |
+| Frontend production build succeeds | **Passed** | `npm run build` completed successfully, 0 lint warnings |
+| Backend dependencies installed | **Passed** | `.venv/` exists; `uv.lock` present; dev dependencies installed |
+| Backend starts successfully | **Passed** | Confirmed via pytest and ASGI client |
+| Health endpoint responds with `{"status":"ok"}` | **Passed** | Verified via automated integration test `tests/test_health.py` |
+| MongoDB connection verified | **Passed** | Verified via `ping` command using `AsyncMongoClient`; connected to `make-my-marriage-dev` on `make-my-marriage-cluster` |
 
 ---
 
@@ -104,9 +102,11 @@
 
 | Feature / Module | Planned Functionality | Implementation Status | Testing Status | Relevant Files | Notes / Blockers |
 |---|---|---|---|---|---|
-| **Health Check** | `GET /api/v1/health` returns `{"status":"ok"}` | Scaffolded | Not tested | `backend/app/main.py` | Requires backend to be started to verify |
-| **Authentication** | Login, logout, current user (`/api/v1/auth/`); secure credential validation; session/token management | Not Started | Not Started | — | Auth mechanism (cookie vs. token) not yet finalized |
-| **Platform Admin — Wedding Creation** | `POST /api/v1/admin/weddings`; create wedding records | Not Started | Not Started | — | Requires auth module first |
+| **Health Check** | `GET /api/v1/health` returns `{"status":"ok"}` | Complete | Passed | `backend/app/main.py`, `backend/tests/test_health.py` | Verified 200 response |
+| **Authentication** | Register, Login, logout, current user (`/api/v1/auth/`); PBKDF2 password hashing; signed session tokens | Complete | Passed (10/10 tests) | `backend/app/api/v1/auth.py`, `backend/app/core/security.py`, `backend/app/schemas/auth.py` | Session cookies with configurable security |
+| **Login Page (`/login`)** | Split-screen luxury login form; quick demo credentials; responsive layout | Complete | Passed | `frontend/src/app/login/page.tsx` | Verified responsive and lint-free |
+| **Signup Page (`/signup`)** | Split-screen registration for Couples & Planners; responsive layout | Complete | Passed | `frontend/src/app/signup/page.tsx` | Form validation and auto-redirect |
+| **Platform Admin — Wedding Creation** | `POST /api/v1/admin/weddings`; create wedding records | Not Started | Not Started | — | Requires admin endpoints |
 | **Platform Admin — Manager Accounts** | `POST /api/v1/admin/managers`; create, list, update Managers | Not Started | Not Started | — | Requires auth module; password-setup email flow not finalized |
 | **Wedding Manager Dashboard** | `GET /api/v1/weddings/{id}/dashboard`; summaries (guests, RSVPs, tasks, events) | Not Started | Not Started | — | Requires all sub-modules |
 | **Wedding Setup (Manager)** | `PATCH /api/v1/weddings/{id}`; update wedding details from dashboard | Not Started | Not Started | — | Requires auth and wedding creation |

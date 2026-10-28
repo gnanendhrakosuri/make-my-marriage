@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = React.useState('home');
@@ -120,12 +121,13 @@ export default function HomePage() {
               <span className={`nav-indicator absolute bottom-0 h-[2px] bg-gradient-to-r from-[#C5A059] via-[#E5C378] to-[#C5A059] rounded-full transition-all duration-300 group-hover:left-2 group-hover:right-2 ${activeTab === "real-stories" ? "opacity-100 left-0 right-0" : "opacity-0 left-1/2 right-1/2"}`}></span>
             </a>
           </nav>
-          <div className="flex items-center gap-space-md">
-            <a className="font-label-lg text-label-lg uppercase tracking-wider text-stone-muted hover:text-charcoal-ink transition-colors" data-path="login" href="#preview-suite">Login</a>
-            <a className="hidden sm:inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_4px_16px_rgba(74,18,26,0.25)] border border-[#C5A059]/30" data-path="get-started" href="#templates">Get Started</a>
-            <div className="w-8 h-8 rounded-full bg-burgundy-velvet ring-1 ring-[#C5A059]/40 flex items-center justify-center shadow-sm">
+          <div className="flex items-center gap-space-sm sm:gap-space-md">
+            <Link className="font-label-lg text-label-lg uppercase tracking-wider text-stone-muted hover:text-charcoal-ink transition-colors px-2 py-1" data-path="login" href="/login">Login</Link>
+            <Link className="hidden md:inline-flex font-label-lg text-label-lg uppercase tracking-wider text-brand-gold hover:text-brand-burgundy transition-colors font-medium px-2 py-1" data-path="signup" href="/signup">Sign Up</Link>
+            <Link className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_4px_16px_rgba(74,18,26,0.25)] border border-[#C5A059]/30" data-path="get-started" href="/signup">Create Account</Link>
+            <Link href="/login" className="w-8 h-8 rounded-full bg-burgundy-velvet ring-1 ring-[#C5A059]/40 flex items-center justify-center shadow-sm hover:scale-105 transition-transform" aria-label="Portal Account">
               <span className="material-symbols-outlined text-[#FAF7F2] text-[18px]">person</span>
-            </div>
+            </Link>
           </div>
         </div>
       </header>
@@ -147,10 +149,10 @@ export default function HomePage() {
                 Create a bespoke, couture wedding website that effortlessly informs your guests, gathers RSVPs, and curates moments—crafted with the timeless elegance your celebration deserves.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 mb-12">
-                <a className="group inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-lg text-label-lg uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_8px_24px_rgba(74,18,26,0.28)] border border-[#C5A059]/30" href="#templates">
+                <Link className="group inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-lg text-label-lg uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_8px_24px_rgba(74,18,26,0.28)] border border-[#C5A059]/30" href="/signup">
                   <span>Get Started Complimentary</span>
                   <span className="material-symbols-outlined text-[18px] text-[#E5C378] transition-transform duration-300 group-hover:translate-x-1">arrow_forward</span>
-                </a>
+                </Link>
                 <a className="inline-flex items-center justify-center px-8 py-4 rounded-full bg-[#FFFDF9] text-charcoal-ink border border-[#C5A059]/50 font-label-lg text-label-lg uppercase tracking-wider hover:bg-[#F7F3EB] hover:text-burgundy-velvet transition-all duration-300 shadow-[0_2px_12px_rgba(30,26,24,0.04)]" href="#templates">
                   <span>Explore Live Demo</span>
                 </a>
@@ -620,10 +622,10 @@ export default function HomePage() {
                 No coding or design skills required. Publish your bespoke, couture wedding experience in under 20 minutes.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
-                <a className="px-10 py-5 rounded-full bg-[#FAF7F2] text-burgundy-velvet font-label-lg text-label-lg uppercase tracking-wider hover:bg-[#FFFDF9] hover:text-burgundy-hover transition-all duration-300 shadow-[0_16px_36px_rgba(0,0,0,0.3)] border border-[#C5A059] flex items-center gap-3 font-semibold" href="#templates">
+                <Link className="px-10 py-5 rounded-full bg-[#FAF7F2] text-burgundy-velvet font-label-lg text-label-lg uppercase tracking-wider hover:bg-[#FFFDF9] hover:text-burgundy-hover transition-all duration-300 shadow-[0_16px_36px_rgba(0,0,0,0.3)] border border-[#C5A059] flex items-center gap-3 font-semibold" href="/signup">
                   <span>Get Started for Free</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                </a>
+                </Link>
               </div>
               <div className="flex items-center gap-4 text-[#E5C378] font-label-sm text-label-sm uppercase tracking-widest">
                 <span>No credit card required</span>

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str
+    cookie_secure: bool = False
 
     # CORS — comma-separated list of allowed origins
     cors_origins: str = "http://localhost:3000"
