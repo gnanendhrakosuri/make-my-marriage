@@ -87,6 +87,17 @@ export default function SignUpPage() {
         return;
       }
 
+      if (data?.data?.user) {
+        try {
+          localStorage.setItem('mmm_user', JSON.stringify(data.data.user));
+          if (data.data.token) {
+            localStorage.setItem('mmm_token', data.data.token);
+          }
+        } catch {
+          // localStorage may be disabled or restricted
+        }
+      }
+
       setIsLoading(false);
       setSuccessMessage(true);
       setTimeout(() => {
@@ -274,7 +285,7 @@ export default function SignUpPage() {
                 Email Address <span className="text-brand-burgundy">*</span>
               </label>
               <div className="relative custom-ring rounded-xl border border-stone-200 bg-white transition-all">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 z-10">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" />
                   </svg>
@@ -286,7 +297,7 @@ export default function SignUpPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm text-brand-charcoal placeholder-stone-400 rounded-xl focus:outline-none"
+                  className="w-full !pl-11 pr-4 py-2.5 bg-transparent text-sm text-brand-charcoal placeholder-stone-400 rounded-xl focus:outline-none"
                 />
               </div>
             </div>
@@ -331,7 +342,7 @@ export default function SignUpPage() {
                 Password <span className="text-brand-burgundy">*</span>
               </label>
               <div className="relative custom-ring rounded-xl border border-stone-200 bg-white transition-all">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 z-10">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
@@ -343,7 +354,7 @@ export default function SignUpPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 8 characters"
-                  className="w-full pl-10 pr-11 py-2.5 bg-transparent text-sm text-brand-charcoal placeholder-stone-400 rounded-xl focus:outline-none"
+                  className="w-full !pl-11 pr-11 py-2.5 bg-transparent text-sm text-brand-charcoal placeholder-stone-400 rounded-xl focus:outline-none"
                 />
                 <button
                   type="button"

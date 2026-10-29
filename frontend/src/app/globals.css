@@ -83,3 +83,33 @@
     min-height: 100vh !important;
   }
 }
+
+/* Universal fix: Guarantee inputs with leading/trailing icons have proper padding that cannot be overridden by form resets */
+input[class*="pl-10"], input.pl-10 {
+  padding-left: 2.75rem !important;
+}
+input[class*="pl-11"], input.pl-11 {
+  padding-left: 3rem !important;
+}
+input[class*="pl-12"], input.pl-12 {
+  padding-left: 3.25rem !important;
+}
+
+input[class*="pr-10"], input.pr-10 {
+  padding-right: 2.75rem !important;
+}
+input[class*="pr-11"], input.pr-11 {
+  padding-right: 3rem !important;
+}
+input[class*="pr-12"], input.pr-12 {
+  padding-right: 3.25rem !important;
+}
+
+/* Make sure decorative icons inside relative inputs are vertically centered, non-blocking, and layered */
+.relative > span.material-symbols-outlined.absolute:not(button):not(a),
+.relative > div.absolute.left-0:not(:has(button, a, input)) {
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+

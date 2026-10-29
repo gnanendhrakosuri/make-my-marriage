@@ -8,8 +8,8 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = React.useState('home');
   const [currentTheme, setCurrentTheme] = React.useState<'chateau' | 'amalfi' | 'blacktie'>('chateau');
   const [activeSubTab, setActiveSubTab] = React.useState<'story' | 'schedule' | 'travel' | 'registry'>('story');
-  const [rsvpName, setRsvpName] = React.useState('Julian Montgomery');
-  const [rsvpParty, setRsvpParty] = React.useState('2 Guests (Julian & Sophia)');
+  const [rsvpName, setRsvpName] = React.useState('');
+  const [rsvpParty, setRsvpParty] = React.useState('');
   const [rsvpSubmitted, setRsvpSubmitted] = React.useState(false);
 
   const themeData = {
@@ -58,8 +58,6 @@ export default function HomePage() {
   const handleThemeChange = (themeKey: 'chateau' | 'amalfi' | 'blacktie') => {
     setCurrentTheme(themeKey);
     setRsvpSubmitted(false);
-    setRsvpName(themeData[themeKey].defaultGuestName);
-    setRsvpParty(themeData[themeKey].defaultGuestParty);
   };
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -122,8 +120,11 @@ export default function HomePage() {
             </a>
           </nav>
           <div className="flex items-center gap-space-sm sm:gap-space-md">
+            <Link className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FFFDF9] border border-[#C5A059]/40 text-[#4A121A] font-label-md text-xs uppercase tracking-wider hover:bg-[#F7F3EB] transition-all font-semibold shadow-xs" href="/onboarding">
+              <span className="material-symbols-outlined text-[15px] text-[#C5A059]">auto_awesome</span>
+              <span>Set Up Wedding</span>
+            </Link>
             <Link className="font-label-lg text-label-lg uppercase tracking-wider text-stone-muted hover:text-charcoal-ink transition-colors px-2 py-1" data-path="login" href="/login">Login</Link>
-            <Link className="hidden md:inline-flex font-label-lg text-label-lg uppercase tracking-wider text-brand-gold hover:text-brand-burgundy transition-colors font-medium px-2 py-1" data-path="signup" href="/signup">Sign Up</Link>
             <Link className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_4px_16px_rgba(74,18,26,0.25)] border border-[#C5A059]/30" data-path="get-started" href="/signup">Create Account</Link>
             <Link href="/login" className="w-8 h-8 rounded-full bg-burgundy-velvet ring-1 ring-[#C5A059]/40 flex items-center justify-center shadow-sm hover:scale-105 transition-transform" aria-label="Portal Account">
               <span className="material-symbols-outlined text-[#FAF7F2] text-[18px]">person</span>
@@ -153,9 +154,10 @@ export default function HomePage() {
                   <span>Get Started Complimentary</span>
                   <span className="material-symbols-outlined text-[18px] text-[#E5C378] transition-transform duration-300 group-hover:translate-x-1">arrow_forward</span>
                 </Link>
-                <a className="inline-flex items-center justify-center px-8 py-4 rounded-full bg-[#FFFDF9] text-charcoal-ink border border-[#C5A059]/50 font-label-lg text-label-lg uppercase tracking-wider hover:bg-[#F7F3EB] hover:text-burgundy-velvet transition-all duration-300 shadow-[0_2px_12px_rgba(30,26,24,0.04)]" href="#templates">
-                  <span>Explore Live Demo</span>
-                </a>
+                <Link className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-[#FFFDF9] text-charcoal-ink border border-[#C5A059]/50 font-label-lg text-label-lg uppercase tracking-wider hover:bg-[#F7F3EB] hover:text-burgundy-velvet transition-all duration-300 shadow-[0_2px_12px_rgba(30,26,24,0.04)]" href="/onboarding">
+                  <span className="material-symbols-outlined text-[18px] text-[#C5A059]">auto_awesome</span>
+                  <span>Launch Atelier Wizard</span>
+                </Link>
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-16 text-stone-muted">
                 <div className="flex -space-x-2">
@@ -561,6 +563,7 @@ export default function HomePage() {
                                 className="w-full px-3.5 py-2 text-sm rounded bg-[#FAF7F2] border border-[#C5A059]/20 text-charcoal-ink focus:outline-none focus:ring-1 focus:ring-[#C5A059] font-body-sm transition-all"
                                 id="mockup-rsvp-input"
                                 type="text"
+                                placeholder="Your Full Name"
                                 value={rsvpName}
                                 onChange={(e) => setRsvpName(e.target.value)}
                               />
@@ -571,6 +574,7 @@ export default function HomePage() {
                                 className="w-full px-3.5 py-2 text-sm rounded bg-[#FAF7F2] border border-[#C5A059]/20 text-charcoal-ink focus:outline-none focus:ring-1 focus:ring-[#C5A059] font-body-sm transition-all"
                                 id="mockup-rsvp-guest"
                                 type="text"
+                                placeholder="e.g. 2 Guests"
                                 value={rsvpParty}
                                 onChange={(e) => setRsvpParty(e.target.value)}
                               />
