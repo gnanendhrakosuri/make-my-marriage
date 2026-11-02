@@ -1,17 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
-export default function SignUpPage() {
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login: authLogin } = useAuth();
+
+  const initialEmail = searchParams?.get('email') || '';
+  const initialName = searchParams?.get('name') || '';
+
   const [accountType, setAccountType] = useState<'couple' | 'planner'>('couple');
-  const [fullName, setFullName] = useState('');
+  const [fullName, setFullName] = useState(initialName);
   const [partnerName, setPartnerName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState('');
   const [weddingDate, setWeddingDate] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +28,13 @@ export default function SignUpPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(false);
+
+  useEffect(() => {
+    const qEmail = searchParams?.get('email');
+    const qName = searchParams?.get('name');
+    if (qEmail) setEmail(qEmail);
+    if (qName) setFullName(qName);
+  }, [searchParams]);
 
   const handleAccountTypeSwitch = (type: 'couple' | 'planner') => {
     setAccountType(type);
@@ -88,14 +102,7 @@ export default function SignUpPage() {
       }
 
       if (data?.data?.user) {
-        try {
-          localStorage.setItem('mmm_user', JSON.stringify(data.data.user));
-          if (data.data.token) {
-            localStorage.setItem('mmm_token', data.data.token);
-          }
-        } catch {
-          // localStorage may be disabled or restricted
-        }
+        authLogin(data.data.user, data.data.token);
       }
 
       setIsLoading(false);
@@ -551,5 +558,19 @@ export default function SignUpPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center text-sm text-[#4A121A] font-serif">
+          Loading Atelier Registration...
+        </div>
+      }
+    >
+      <SignUpContent />
+    </Suspense>
   );
 }

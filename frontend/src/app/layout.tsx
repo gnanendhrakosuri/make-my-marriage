@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Cinzel, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${playfair.variable} ${plusJakarta.variable} ${cinzel.variable}`}>
       <body className="antialiased selection:bg-gold-champagne/30 selection:text-burgundy-velvet">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

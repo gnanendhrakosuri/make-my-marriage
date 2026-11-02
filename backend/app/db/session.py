@@ -18,6 +18,18 @@ async def init_db(client: AsyncMongoClient) -> None:
     """Ensure indexes and initial seed data exist."""
     db = client[settings.database_name]
     await db.users.create_index("email", unique=True)
+    await db.password_resets.create_index("tokenHash", unique=True)
+    await db.password_resets.create_index("expiresAt")
+
+    # Guest Management & Invitations
+    await db.guests.create_index("weddingId")
+    await db.guests.create_index([("weddingId", 1), ("email", 1)])
+    await db.invitations.create_index("tokenHash", unique=True)
+    await db.invitations.create_index([("weddingId", 1), ("guestId", 1)])
+    await db.invitations.create_index("status")
+    await db.notifications.create_index([("weddingId", 1), ("guestId", 1)])
+    await db.notifications.create_index("providerMessageId")
+    await db.notifications.create_index("createdAt")
 
     import os
     env = os.getenv("ENVIRONMENT", "development").lower()

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 interface SoireeEvent {
   id: string;
@@ -18,6 +20,17 @@ interface SoireeEvent {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function WeddingOnboardingPage() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    setIsLoggingOut(false);
+    router.push('/');
+  };
+
   // Stepper state
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [lastSavedTime, setLastSavedTime] = useState<string>('Just now');
@@ -515,16 +528,38 @@ export default function WeddingOnboardingPage() {
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#4A121A] border-2 border-[#FAF7F2]"></span>
             </button>
 
-            {/* Concierge Profile Pill */}
+            {/* Concierge / User Profile Pill */}
             <div className="flex items-center gap-2 pl-1">
               <div className="hidden md:flex flex-col text-right">
-                <span className="text-xs font-semibold text-[#1E1A18] leading-tight">Elena Rostova</span>
-                <span className="text-[10px] text-[#B38E46] uppercase font-medium">Lead Concierge</span>
+                <span className="text-xs font-semibold text-[#1E1A18] leading-tight">
+                  {user?.name || 'Elena Rostova'}
+                </span>
+                <span className="text-[10px] text-[#B38E46] uppercase font-medium">
+                  {user ? (user.role === 'admin' ? 'Platform Admin' : user.role === 'planner' ? 'Wedding Planner' : 'Couple Account') : 'Lead Concierge'}
+                </span>
               </div>
               <div className="w-8 h-8 rounded-full bg-[#4A121A] text-[#FFFDF9] flex items-center justify-center text-xs font-bold ring-2 ring-[#C5A059]/30">
-                ER
+                {(user?.name || 'ER').slice(0, 2).toUpperCase()}
               </div>
             </div>
+
+            {/* Logout Button */}
+            <div className="h-5 w-[1px] bg-[#C5A059]/30 hidden sm:block"></div>
+            <button
+              type="button"
+              id="onboardingLogoutBtn"
+              disabled={isLoggingOut}
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#F7F3EB] hover:bg-[#F1EBE0] text-[#756D67] hover:text-[#4A121A] text-xs font-semibold uppercase tracking-wider border border-[#C5A059]/30 transition-all shadow-xs"
+              title="Sign out of Atelier session"
+            >
+              {isLoggingOut ? (
+                <span className="w-3.5 h-3.5 border-2 border-[#4A121A]/30 border-t-[#4A121A] rounded-full animate-spin"></span>
+              ) : (
+                <span className="material-symbols-outlined text-[16px] text-[#4A121A]">logout</span>
+              )}
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>

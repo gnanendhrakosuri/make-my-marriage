@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.guests import router as guests_router
+from app.api.v1.invitations import router as invitations_router
+from app.api.v1.public_invitations import router as public_invitations_router
 from app.core.config import settings
 from app.db.session import lifespan_db
 
@@ -37,3 +40,6 @@ async def health_check() -> dict[str, str]:
 
 # ─── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(guests_router, prefix="/api/v1")
+app.include_router(invitations_router, prefix="/api/v1")
+app.include_router(public_invitations_router, prefix="/api/v1")

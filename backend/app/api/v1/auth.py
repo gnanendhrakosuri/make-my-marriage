@@ -1,5 +1,8 @@
+import hashlib
+import logging
 import re
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from bson import ObjectId
 
@@ -20,6 +23,13 @@ from app.schemas.auth import (
     RegisterRequest,
     UserPublic,
 )
+from app.schemas.password_reset import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    PasswordResetResponse,
+)
+
+logger = logging.getLogger("app.auth")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -251,3 +261,120 @@ async def get_current_user(
 async def logout(response: Response):
     response.delete_cookie(key="session_token", path="/")
     return {"success": True, "message": "Sign out successful."}
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetResponse,
+    summary="Request a password recovery link",
+)
+async def request_password_reset(
+    payload: PasswordResetRequest,
+    db=Depends(get_database),
+):
+    normalized_email = payload.email.strip().lower()
+
+    if not EMAIL_REGEX.match(normalized_email):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Please provide a valid email address.",
+        )
+
+    generic_message = (
+        "If an account exists with this email address, you will receive a link to reset your password."
+    )
+
+    user = await db.users.find_one({"email": normalized_email})
+    if not user or user.get("status") != "active":
+        return PasswordResetResponse(success=True, message=generic_message)
+
+    # Invalidate any existing unused reset tokens for this email
+    now = datetime.now(timezone.utc)
+    await db.password_resets.update_many(
+        {"email": normalized_email, "used": False},
+        {"$set": {"used": True, "invalidatedAt": now}},
+    )
+
+    # Generate a cryptographically secure random token (32 bytes urlsafe)
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    expires_at = now + timedelta(minutes=15)
+
+    reset_doc = {
+        "userId": user["_id"],
+        "email": normalized_email,
+        "tokenHash": token_hash,
+        "expiresAt": expires_at,
+        "used": False,
+        "createdAt": now,
+    }
+
+    await db.password_resets.insert_one(reset_doc)
+
+    recovery_url = f"{settings.frontend_url.rstrip('/')}/forgot-password/reset?token={raw_token}"
+    logger.info(
+        f"[PASSWORD RESET] Password recovery token created for {normalized_email}. "
+        f"Recovery link: {recovery_url}"
+    )
+
+    return PasswordResetResponse(success=True, message=generic_message)
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetResponse,
+    summary="Reset password using a valid recovery token",
+)
+async def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    db=Depends(get_database),
+):
+    if len(payload.newPassword) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 8 characters.",
+        )
+
+    token_hash = hashlib.sha256(payload.token.strip().encode("utf-8")).hexdigest()
+    now = datetime.now(timezone.utc)
+
+    reset_record = await db.password_resets.find_one(
+        {
+            "tokenHash": token_hash,
+            "used": False,
+            "expiresAt": {"$gt": now},
+        }
+    )
+
+    if not reset_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This password recovery link is invalid, expired, or has already been used.",
+        )
+
+    # Hash new password with OWASP PBKDF2-HMAC-SHA256 (600,000 iterations)
+    new_password_hash = get_password_hash(payload.newPassword)
+
+    # Update user password in users collection
+    await db.users.update_one(
+        {"_id": reset_record["userId"]},
+        {
+            "$set": {
+                "passwordHash": new_password_hash,
+                "updatedAt": now,
+            }
+        },
+    )
+
+    # Mark reset token as used (single-use)
+    await db.password_resets.update_one(
+        {"_id": reset_record["_id"]},
+        {"$set": {"used": True, "consumedAt": now}},
+    )
+
+    logger.info(f"[PASSWORD RESET] Password successfully updated for user {reset_record['email']}")
+
+    return PasswordResetResponse(
+        success=True,
+        message="Your password has been reset successfully. Please sign in with your new credentials.",
+    )

@@ -1,27 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  const { login: authLogin } = useAuth();
+
+  const initialEmail = searchParams?.get('email') || '';
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorBannerVisible, setErrorBannerVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [infoBannerVisible, setInfoBannerVisible] = useState(false);
-  const [infoMessage, setInfoMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [grantedMessage, setGrantedMessage] = useState(false);
 
+  useEffect(() => {
+    const qEmail = searchParams?.get('email');
+    if (qEmail) {
+      setEmail(qEmail);
+    }
+  }, [searchParams]);
+
   const fillCredential = (type: 'manager' | 'admin') => {
     setErrorBannerVisible(false);
-    setInfoBannerVisible(false);
     if (type === 'manager') {
       setEmail('elena.rostova@makemymarriage.com');
       setPassword('HauteConcierge2025!');
@@ -35,20 +44,12 @@ export default function LoginPage() {
     setEmail('invalid.guest@personalmail.com');
     setErrorMessage('Access restricted: Please sign in with a valid registered Atelier account.');
     setErrorBannerVisible(true);
-    setInfoBannerVisible(false);
-  };
-
-  const handleForgotPassword = () => {
-    setErrorBannerVisible(false);
-    setInfoMessage('Password reset instructions have been dispatched to your linked recovery email.');
-    setInfoBannerVisible(true);
   };
 
   const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setInfoBannerVisible(false);
 
     if (!email || !EMAIL_REGEX.test(email.trim())) {
       setErrorMessage('Please enter a valid email address.');
@@ -89,14 +90,7 @@ export default function LoginPage() {
       }
 
       if (data?.data?.user) {
-        try {
-          localStorage.setItem('mmm_user', JSON.stringify(data.data.user));
-          if (data.data.token) {
-            localStorage.setItem('mmm_token', data.data.token);
-          }
-        } catch {
-          // localStorage may be disabled or restricted
-        }
+        authLogin(data.data.user, data.data.token);
       }
 
       setIsLoading(false);
@@ -196,27 +190,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Informational Notification Banner */}
-          {infoBannerVisible && (
-            <div className="mb-5 p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-left transition-all">
-              <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-medium text-amber-900">{infoMessage}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInfoBannerVisible(false)}
-                className="text-stone-400 hover:text-stone-600 text-sm leading-none"
-              >
-                ×
-              </button>
-            </div>
-          )}
-
           {/* Access Granted Notification Banner */}
           {grantedMessage && (
             <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-left transition-all">
@@ -270,13 +243,12 @@ export default function LoginPage() {
                 <label htmlFor="passwordInput" className="block text-xs font-semibold tracking-wide text-brand-charcoal uppercase">
                   Password <span className="text-brand-burgundy">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
+                <Link
+                  href="/forgot-password"
                   className="text-xs text-brand-gold hover:text-brand-burgundy transition-colors font-medium hover:underline"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
               <div className="relative custom-ring rounded-xl border border-stone-200 bg-white transition-all">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 z-10">
@@ -525,5 +497,19 @@ export default function LoginPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center text-sm text-[#4A121A] font-serif">
+          Loading Atelier Security Access...
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

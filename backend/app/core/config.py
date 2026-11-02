@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # CORS — comma-separated list of allowed origins
     cors_origins: str = "http://localhost:3000"
 
+    # Email Service (Resend)
+    resend_api_key: str = ""
+    email_from: str = "Make My Marriage <onboarding@resend.dev>"
+    frontend_url: str = "http://localhost:3000"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Return CORS origins as a list, trimming whitespace."""
