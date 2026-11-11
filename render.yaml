@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: make-my-marriage-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: MONGODB_URI
+        sync: false
+      - key: DATABASE_NAME
+        value: make-my-marriage-prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: "Make My Marriage <onboarding@resend.dev>"
+
