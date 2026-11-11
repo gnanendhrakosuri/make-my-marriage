@@ -86,13 +86,18 @@ async def register(
     user_id = str(result.inserted_id)
 
     # Issue session token
+    # In production (cross-origin between vercel.app and onrender.com),
+    # cookies must be samesite="none" and secure=True to be sent with credentials.
+    is_secure = True if settings.cookie_secure or not settings.cors_origins.startswith("http://localhost") else False
+    samesite_val = "none" if is_secure else "lax"
+
     session_token = create_session_token(user_id)
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
+        secure=is_secure,
+        samesite=samesite_val,
         max_age=86400 * 30,
         path="/",
     )
@@ -164,12 +169,15 @@ async def login(
     max_age = 86400 * 30 if payload.rememberMe else 86400 * 1
 
     session_token = create_session_token(user_id)
+    is_secure = True if settings.cookie_secure or not settings.cors_origins.startswith("http://localhost") else False
+    samesite_val = "none" if is_secure else "lax"
+
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
+        secure=is_secure,
+        samesite=samesite_val,
         max_age=max_age,
         path="/",
     )
