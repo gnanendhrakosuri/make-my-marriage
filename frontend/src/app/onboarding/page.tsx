@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface SoireeEvent {
   id: string;
@@ -406,7 +407,7 @@ export default function WeddingOnboardingPage() {
   };
 
   // Publish / Create Wedding with full verification
-  const handlePublish = () => {
+  const handlePublish = async () => {
     const { isValid, firstInvalidStep, allErrors } = validateAllSteps();
     if (!isValid) {
       setErrors(allErrors);
@@ -416,14 +417,63 @@ export default function WeddingOnboardingPage() {
     }
 
     setIsPublishing(true);
-    setTimeout(() => {
-      setIsPublishing(false);
+    setErrors({});
+
+    try {
+      const payload = {
+        siteTitle,
+        partnerOne,
+        partnerTwo,
+        weddingDate: weddingDate || null,
+        welcomeStory: welcomeStory || null,
+        urlSlug,
+        partnerOneRole: partnerOneRole || null,
+        partnerOneEmail: partnerOneEmail || null,
+        partnerOneBio: partnerOneBio || null,
+        partnerTwoRole: partnerTwoRole || null,
+        partnerTwoEmail: partnerTwoEmail || null,
+        partnerTwoBio: partnerTwoBio || null,
+        howWeMet: howWeMet || null,
+        venueName: venueName || null,
+        venueAddress: venueAddress || null,
+        venueCity: venueCity || null,
+        venueCountry: venueCountry || null,
+        timezone: timezone || 'UTC',
+        coordinates: coordinates || null,
+        accommodationNotes: accommodationNotes || null,
+        transportNotes: transportNotes || null,
+        events: events.map((ev) => ({
+          title: ev.title,
+          date: ev.date || null,
+          startTime: ev.startTime || null,
+          endTime: ev.endTime || null,
+          location: ev.location || null,
+          dressCode: ev.dressCode || null,
+          isPublic: ev.isPublic ?? true,
+        })),
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/weddings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Unable to publish wedding atelier.');
+      }
+
+      const responseData = await res.json();
+
       setPublishSuccessModal(true);
       handleSaveDraft();
       try {
         localStorage.setItem(
           'mmm_published_wedding',
           JSON.stringify({
+            id: responseData.id,
             siteTitle,
             partnerOne,
             partnerTwo,
@@ -438,7 +488,14 @@ export default function WeddingOnboardingPage() {
       } catch {
         // localStorage fallback
       }
-    }, 1200);
+    } catch (err: unknown) {
+      setErrors({
+        publish: err instanceof Error ? err.message : 'An unexpected error occurred during publication.',
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // Step definitions
@@ -1778,19 +1835,19 @@ export default function WeddingOnboardingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setPublishSuccessModal(false)}
-                className="flex-1 px-5 py-3 rounded-full bg-[#F7F3EB] hover:bg-[#FAF7F2] text-xs font-semibold uppercase tracking-wider border border-[#C5A059]/20"
-              >
-                Continue Editing
-              </button>
               <Link
-                href="/"
+                href={`/w/${urlSlug}`}
                 className="flex-1 px-5 py-3 rounded-full bg-[#4A121A] hover:bg-[#360B12] text-[#FFFDF9] text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1 shadow-md"
               >
-                <span>Go to Portal</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                <span>View Wedding Site</span>
+                <span className="material-symbols-outlined text-[16px]">visibility</span>
+              </Link>
+              <Link
+                href="/dashboard/guests"
+                className="flex-1 px-5 py-3 rounded-full bg-[#F7F3EB] hover:bg-[#FAF7F2] text-[#1E1A18] text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1 border border-[#C5A059]/30"
+              >
+                <span>Guest Concierge</span>
+                <span className="material-symbols-outlined text-[16px]">people</span>
               </Link>
             </div>
           </div>

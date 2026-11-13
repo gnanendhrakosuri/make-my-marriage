@@ -5,6 +5,8 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.guests import router as guests_router
 from app.api.v1.invitations import router as invitations_router
 from app.api.v1.public_invitations import router as public_invitations_router
+from app.api.v1.public_weddings import router as public_weddings_router
+from app.api.v1.weddings import router as weddings_router
 from app.core.config import settings
 from app.db.session import lifespan_db
 
@@ -43,3 +45,5 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(guests_router, prefix="/api/v1")
 app.include_router(invitations_router, prefix="/api/v1")
 app.include_router(public_invitations_router, prefix="/api/v1")
+app.include_router(weddings_router, prefix="/api/v1")
+app.include_router(public_weddings_router, prefix="/api/v1")

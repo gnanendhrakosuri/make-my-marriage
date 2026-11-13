@@ -31,6 +31,12 @@ async def init_db(client: AsyncMongoClient) -> None:
     await db.notifications.create_index("providerMessageId")
     await db.notifications.create_index("createdAt")
 
+    # Weddings & Sub-Events
+    await db.weddings.create_index("slug", unique=True)
+    await db.weddings.create_index("managerIds")
+    await db.events.create_index("weddingId")
+    await db.events.create_index([("weddingId", 1), ("isPublic", 1), ("date", 1)])
+
     import os
     env = os.getenv("ENVIRONMENT", "development").lower()
     seed_demo = os.getenv("SEED_DEMO_USERS", "true" if env != "production" else "false").lower() == "true"
