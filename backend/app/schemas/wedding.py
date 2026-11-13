@@ -13,6 +13,17 @@ class SubEventCreate(BaseModel):
     isPublic: bool = Field(default=True, description="Whether event is publicly visible")
 
 
+class SubEventUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=120)
+    date: Optional[str] = None
+    startTime: Optional[str] = None
+    endTime: Optional[str] = None
+    location: Optional[str] = Field(None, max_length=200)
+    dressCode: Optional[str] = Field(None, max_length=100)
+    isPublic: Optional[bool] = None
+
+
+
 class SubEventResponse(BaseModel):
     id: str
     title: str

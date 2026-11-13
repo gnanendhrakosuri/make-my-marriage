@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
 from typing import List
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.v1.deps import get_current_user_doc, verify_wedding_access
 from app.db.session import get_database
 from app.schemas.wedding import (
+    SubEventCreate,
     SubEventResponse,
+    SubEventUpdate,
     WeddingCreate,
     WeddingResponse,
 )
@@ -186,4 +189,145 @@ async def get_wedding_by_id(
         createdAt=wedding.get("createdAt", datetime.now(timezone.utc)),
         updatedAt=wedding.get("updatedAt", datetime.now(timezone.utc)),
     )
+
+
+@router.post(
+    "/{weddingId}/events",
+    response_model=SubEventResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a new celebration event to the wedding itinerary",
+)
+async def add_wedding_event(
+    weddingId: str,
+    payload: SubEventCreate,
+    current_user: dict = Depends(get_current_user_doc),
+    db=Depends(get_database),
+):
+    """
+    Adds a new event (e.g. Welcome Drinks, Reception, Brunch) to a wedding dossier.
+    Requires manager or admin access to the wedding.
+    """
+    wedding = await verify_wedding_access(weddingId, current_user, db)
+    now = datetime.now(timezone.utc)
+
+    ev_doc = {
+        "weddingId": str(wedding["_id"]),
+        "title": payload.title.strip(),
+        "date": payload.date,
+        "startTime": payload.startTime,
+        "endTime": payload.endTime,
+        "location": payload.location,
+        "dressCode": payload.dressCode,
+        "isPublic": payload.isPublic,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+
+    res = await db.events.insert_one(ev_doc)
+    return SubEventResponse(
+        id=str(res.inserted_id),
+        title=ev_doc["title"],
+        date=ev_doc["date"],
+        startTime=ev_doc["startTime"],
+        endTime=ev_doc["endTime"],
+        location=ev_doc["location"],
+        dressCode=ev_doc["dressCode"],
+        isPublic=ev_doc["isPublic"],
+    )
+
+
+@router.put(
+    "/{weddingId}/events/{eventId}",
+    response_model=SubEventResponse,
+    summary="Update an existing celebration event in the wedding itinerary",
+)
+async def update_wedding_event(
+    weddingId: str,
+    eventId: str,
+    payload: SubEventUpdate,
+    current_user: dict = Depends(get_current_user_doc),
+    db=Depends(get_database),
+):
+    """
+    Updates an event's details. Requires manager/admin access to the wedding.
+    """
+    wedding = await verify_wedding_access(weddingId, current_user, db)
+    now = datetime.now(timezone.utc)
+
+    query = {"weddingId": str(wedding["_id"])}
+    if ObjectId.is_valid(eventId):
+        query["_id"] = ObjectId(eventId)
+    else:
+        query["_id"] = eventId
+
+    existing = await db.events.find_one(query)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event '{eventId}' not found in wedding dossier.",
+        )
+
+    update_fields = {"updatedAt": now}
+    if payload.title is not None:
+        update_fields["title"] = payload.title.strip()
+    if payload.date is not None:
+        update_fields["date"] = payload.date
+    if payload.startTime is not None:
+        update_fields["startTime"] = payload.startTime
+    if payload.endTime is not None:
+        update_fields["endTime"] = payload.endTime
+    if payload.location is not None:
+        update_fields["location"] = payload.location
+    if payload.dressCode is not None:
+        update_fields["dressCode"] = payload.dressCode
+    if payload.isPublic is not None:
+        update_fields["isPublic"] = payload.isPublic
+
+    await db.events.update_one({"_id": existing["_id"]}, {"$set": update_fields})
+    updated = await db.events.find_one({"_id": existing["_id"]})
+
+    return SubEventResponse(
+        id=str(updated["_id"]),
+        title=updated.get("title", ""),
+        date=updated.get("date"),
+        startTime=updated.get("startTime"),
+        endTime=updated.get("endTime"),
+        location=updated.get("location"),
+        dressCode=updated.get("dressCode"),
+        isPublic=updated.get("isPublic", True),
+    )
+
+
+@router.delete(
+    "/{weddingId}/events/{eventId}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete a celebration event from the wedding itinerary",
+)
+async def delete_wedding_event(
+    weddingId: str,
+    eventId: str,
+    current_user: dict = Depends(get_current_user_doc),
+    db=Depends(get_database),
+):
+    """
+    Deletes an event from the wedding dossier. Requires manager/admin access.
+    """
+    wedding = await verify_wedding_access(weddingId, current_user, db)
+
+    query = {"weddingId": str(wedding["_id"])}
+    if ObjectId.is_valid(eventId):
+        query["_id"] = ObjectId(eventId)
+    else:
+        query["_id"] = eventId
+
+    delete_result = await db.events.delete_one(query)
+    if delete_result.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event '{eventId}' not found in wedding dossier.",
+        )
+
+    return {"message": "Event deleted successfully", "eventId": eventId}
+
+
 

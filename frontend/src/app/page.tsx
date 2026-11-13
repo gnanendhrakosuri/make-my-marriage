@@ -132,77 +132,82 @@ export default function HomePage() {
             </a>
           </nav>
           <div className="flex items-center gap-space-sm sm:gap-space-md">
-            <Link className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FFFDF9] border border-[#C5A059]/40 text-[#4A121A] font-label-md text-xs uppercase tracking-wider hover:bg-[#F7F3EB] transition-all font-semibold shadow-xs" href="/onboarding">
-              <span className="material-symbols-outlined text-[15px] text-[#C5A059]">auto_awesome</span>
-              <span>Set Up Wedding</span>
-            </Link>
+              <Link className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FFFDF9] border border-[#C5A059]/40 text-[#4A121A] font-label-md text-xs uppercase tracking-wider hover:bg-[#F7F3EB] transition-all font-semibold shadow-xs" href="/dashboard">
+                <span className="material-symbols-outlined text-[15px] text-[#C5A059]">space_dashboard</span>
+                <span>Dashboard</span>
+              </Link>
 
-            <Link className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FAF7F2] border border-[#C5A059]/30 text-[#4A121A] font-label-md text-xs uppercase tracking-wider hover:bg-[#F1EBE0] transition-all font-semibold shadow-xs" href="/dashboard/guests">
-              <span className="material-symbols-outlined text-[15px] text-[#C5A059]">mail</span>
-              <span>Invitations</span>
-            </Link>
+              <Link className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FAF7F2] border border-[#C5A059]/30 text-[#4A121A] font-label-md text-xs uppercase tracking-wider hover:bg-[#F1EBE0] transition-all font-semibold shadow-xs" href="/onboarding">
+                <span className="material-symbols-outlined text-[15px] text-[#C5A059]">auto_awesome</span>
+                <span>Set Up Wedding</span>
+              </Link>
 
-            {/* Dynamic Auth Actions */}
-            {isLoading ? (
-              // Neutral loading placeholder to prevent flicker
-              <div className="h-9 w-28 rounded-full bg-[#F1EBE0]/60 animate-pulse"></div>
-            ) : isAuthenticated ? (
-              <div className="flex items-center gap-2 sm:gap-3">
-                {/* User Profile Pill */}
-                <Link
-                  href="/onboarding"
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFDF9] border border-[#C5A059]/30 text-xs font-semibold text-[#1E1A18] hover:border-[#C5A059] transition-all shadow-xs group"
-                  title={`Signed in as ${user?.name || user?.email}`}
-                >
-                  <div className="w-6 h-6 rounded-full bg-[#4A121A] text-[#FFFDF9] flex items-center justify-center text-[10px] font-bold">
-                    {(user?.name || 'U').charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden md:inline max-w-[120px] truncate text-xs text-[#4A121A]">
-                    {user?.name || user?.email?.split('@')[0]}
-                  </span>
-                </Link>
+              <Link className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FAF7F2] border border-[#C5A059]/30 text-[#4A121A] font-label-md text-xs uppercase tracking-wider hover:bg-[#F1EBE0] transition-all font-semibold shadow-xs" href="/dashboard/guests">
+                <span className="material-symbols-outlined text-[15px] text-[#C5A059]">mail</span>
+                <span>Invitations</span>
+              </Link>
 
-                {/* Logout Button */}
-                <button
-                  type="button"
-                  id="headerLogoutBtn"
-                  disabled={isLoggingOut}
-                  onClick={handleLogout}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#F1EBE0] text-[#756D67] hover:text-[#4A121A] font-label-md text-xs uppercase tracking-wider border border-[#C5A059]/30 transition-all font-semibold shadow-xs disabled:opacity-60"
-                >
-                  {isLoggingOut ? (
-                    <span className="w-3.5 h-3.5 border-2 border-[#4A121A]/30 border-t-[#4A121A] rounded-full animate-spin"></span>
-                  ) : (
-                    <span className="material-symbols-outlined text-[16px] text-[#4A121A]">logout</span>
-                  )}
-                  <span>Logout</span>
-                </button>
-              </div>
-            ) : (
-              <>
-                <Link
-                  className="font-label-lg text-label-lg uppercase tracking-wider text-stone-muted hover:text-charcoal-ink transition-colors px-2 py-1"
-                  data-path="login"
-                  href="/login"
-                >
-                  Login
-                </Link>
-                <Link
-                  className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_4px_16px_rgba(74,18,26,0.25)] border border-[#C5A059]/30"
-                  data-path="get-started"
-                  href="/signup"
-                >
-                  Create Account
-                </Link>
-                <Link
-                  href="/login"
-                  className="w-8 h-8 rounded-full bg-burgundy-velvet ring-1 ring-[#C5A059]/40 flex items-center justify-center shadow-sm hover:scale-105 transition-transform"
-                  aria-label="Portal Account"
-                >
-                  <span className="material-symbols-outlined text-[#FAF7F2] text-[18px]">person</span>
-                </Link>
-              </>
-            )}
+              {/* Dynamic Auth Actions */}
+              {isLoading ? (
+                // Neutral loading placeholder to prevent flicker
+                <div className="h-9 w-28 rounded-full bg-[#F1EBE0]/60 animate-pulse"></div>
+              ) : isAuthenticated ? (
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* User Profile Pill */}
+                  <Link
+                    href="/onboarding"
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFDF9] border border-[#C5A059]/30 text-xs font-semibold text-[#1E1A18] hover:border-[#C5A059] transition-all shadow-xs group"
+                    title={`Signed in as ${user?.name || user?.email}`}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#4A121A] text-[#FFFDF9] flex items-center justify-center text-[10px] font-bold">
+                      {(user?.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden md:inline max-w-[120px] truncate text-xs text-[#4A121A]">
+                      {user?.name || user?.email?.split('@')[0]}
+                    </span>
+                  </Link>
+
+                  {/* Logout Button */}
+                  <button
+                    type="button"
+                    id="headerLogoutBtn"
+                    disabled={isLoggingOut}
+                    onClick={handleLogout}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#F1EBE0] text-[#756D67] hover:text-[#4A121A] font-label-md text-xs uppercase tracking-wider border border-[#C5A059]/30 transition-all font-semibold shadow-xs disabled:opacity-60"
+                  >
+                    {isLoggingOut ? (
+                      <span className="w-3.5 h-3.5 border-2 border-[#4A121A]/30 border-t-[#4A121A] rounded-full animate-spin"></span>
+                    ) : (
+                      <span className="material-symbols-outlined text-[16px] text-[#4A121A]">logout</span>
+                    )}
+                    <span>Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    className="font-label-lg text-label-lg uppercase tracking-wider text-stone-muted hover:text-charcoal-ink transition-colors px-2 py-1"
+                    data-path="login"
+                    href="/login"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_4px_16px_rgba(74,18,26,0.25)] border border-[#C5A059]/30"
+                    data-path="get-started"
+                    href="/signup"
+                  >
+                    Create Account
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="w-8 h-8 rounded-full bg-burgundy-velvet ring-1 ring-[#C5A059]/40 flex items-center justify-center shadow-sm hover:scale-105 transition-transform"
+                    aria-label="Portal Account"
+                  >
+                    <span className="material-symbols-outlined text-[#FAF7F2] text-[18px]">person</span>
+                  </Link>
+                </>
+              )}
           </div>
         </div>
         {logoutFeedback && (
@@ -231,7 +236,7 @@ export default function HomePage() {
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 mb-12">
                 {isAuthenticated ? (
-                  <Link className="group inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-lg text-label-lg uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_8px_24px_rgba(74,18,26,0.28)] border border-[#C5A059]/30" href="/onboarding">
+                  <Link className="group inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-burgundy-velvet text-[#FFFDF9] font-label-lg text-label-lg uppercase tracking-wider hover:bg-burgundy-hover transition-all duration-300 shadow-[0_8px_24px_rgba(74,18,26,0.28)] border border-[#C5A059]/30" href="/dashboard">
                     <span>Continue to Your Atelier</span>
                     <span className="material-symbols-outlined text-[18px] text-[#E5C378] transition-transform duration-300 group-hover:translate-x-1">arrow_forward</span>
                   </Link>
