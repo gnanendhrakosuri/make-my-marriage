@@ -136,4 +136,21 @@ input[class*="pr-12"], input.pr-12 {
 .text-label-md { font-size: 12px; line-height: 16px; letter-spacing: 0.1em; font-weight: 600; }
 .text-label-sm { font-size: 10px; line-height: 14px; letter-spacing: 0.12em; font-weight: 600; }
 
+/* Dashboard layout guarantees to prevent sidebar/header/main overlapping */
+@media (min-width: 1024px) {
+  header.dashboard-header-expanded {
+    left: 18rem !important; /* matches w-72 */
+  }
+  header.dashboard-header-collapsed {
+    left: 5rem !important; /* matches w-20 */
+  }
+  main.dashboard-main-expanded {
+    padding-left: 20rem !important; /* 18rem sidebar + 2rem content spacing */
+  }
+  main.dashboard-main-collapsed {
+    padding-left: 7rem !important; /* 5rem mini-sidebar + 2rem content spacing */
+  }
+}
+
+
 

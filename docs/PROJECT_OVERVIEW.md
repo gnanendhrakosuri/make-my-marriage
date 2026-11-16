@@ -2,8 +2,8 @@
 
 > **Document Type:** Technical & Architectural Reference  
 > **Target Audience:** Software Engineers, System Architects, and Technical Contributors joining Make My Marriage  
-> **Last Updated:** 2026-10-28  
-> **Implementation Baseline:** Dev Branch (Full-Stack Authentication & Editorial Scaffolding Verified)
+> **Last Updated:** 2026-11-16  
+> **Implementation Baseline:** Dev Branch (Full-Stack Authentication, Onboarding & Database Persistence, Manager Dashboard with In-Place Tab Navigation, Event Lifecycle Management, Resend Invitations, Public Wedding Route & RSVP Portal Verified)
 
 ---
 
@@ -58,17 +58,18 @@ Make My Marriage is explicitly a **reusable multi-wedding platform**, not a sing
 | Feature Module | Intended Product Scope | Implementation Status |
 |---|---|---|
 | **Platform Admin Management** | Super-admin provisioning of wedding records, manager assignment, and platform oversight. | **Planned** (Endpoints designed in `API-DD.md`; UI pending) |
-| **Wedding Manager Dashboard** | Central operational dashboard (`/dashboard`) summarizing guest headcounts, RSVP tallies, pending tasks, and event milestones. | **Planned** (Endpoints designed; UI pending) |
-| **Wedding Website Setup** | Configuration of couple names, wedding date, venue coordinates, timezone, welcome narrative, and custom URL slug. | **Planned** (Endpoints designed; UI pending) |
-| **Wedding Events & Schedules** | Timeline management of multiple sub-events (Haldi, Mehendi, Sangeet, Ceremony, Reception) with individual start/end times and public visibility flags. | **Planned** (Endpoints designed; UI pending) |
-| **Task Planner** | Operational preparation tracker with priorities (`low`, `medium`, `high`), due dates, assignee tagging, and statuses (`pending`, `completed`). | **Planned** (Endpoints designed; UI pending) |
-| **Guest Management** | Comprehensive guest list directory with contact details (email, phone) and invitation tracking statuses (`not_sent`, `sent`, `delivered`, `failed`). | **Planned** (Endpoints designed; UI pending) |
-| **Digital Invitations** | Automated dispatch of personalized digital invitation emails via Resend containing unique, single-use cryptographic invitation tokens. | **Planned** (Service integration pending) |
-| **RSVP Management** | Token-authorized RSVP confirmation (`/w/[slug]/invite/[token]`) enabling one-click Yes/No responses without login. | **Planned** (Endpoints designed; UI pending) |
+| **Wedding Manager Dashboard** | Central operational dashboard (`/dashboard`) summarizing guest headcounts, RSVP tallies, pending tasks, countdown to vows, and event milestones with in-place tab routing (`Wedding Details`, `Event Planner`, `Guest Management`, `Invitations & RSVP`, `Settings`). | **Implemented & Verified** (Google Stitch haute couture design, in-place non-navigating tabs, real-time parent sync) |
+| **Wedding Website Setup** | Configuration of couple names, wedding date, venue coordinates, timezone, welcome narrative, and custom URL slug via 5-step onboarding wizard and in-place details tab. | **Implemented & Verified** (`/onboarding` wizard with draft auto-saving, live companion preview, and `POST /api/v1/weddings` Atlas persistence) |
+| **Wedding Events & Schedules** | Timeline management of multiple sub-events (Haldi, Mehendi, Sangeet, Ceremony, Reception) with individual start/end times, dress codes, primary event badges, and full CRUD API. | **Implemented & Verified** (Endpoints in `weddings.py`, modal CRUD in dashboard itinerary, and public display on `/w/[slug]`) |
+| **Task Planner** | Operational preparation tracker with priorities (`low`, `medium`, `high`), due dates, assignee tagging, and statuses (`pending`, `completed`). | **Partially Implemented** (Interactive UI checklist in `/dashboard`; backend CRUD pending) |
+| **Guest Management** | Comprehensive guest list directory with contact details (email, phone), role allocation (`guest`, `manager`, `admin`), profile updates, and invitation tracking statuses. | **Implemented & Verified** (In-place `GuestManagementTab`, backend `guests.py` endpoints, and user collection sync) |
+| **Digital Invitations** | Automated dispatch of personalized digital invitation emails via Resend containing unique, single-use cryptographic invitation tokens. | **Implemented & Verified** (Live Resend integration in `invitations.py` with multi-category reminder dispatch subsystem) |
+| **RSVP Management** | Token-authorized RSVP confirmation (`/w/[slug]/invite/[token]`) enabling one-click Yes/No responses without login, dietary preferences, and live dashboard sync. | **Implemented & Verified** (Dynamic `/w/[slug]/invite/[token]` route and `/api/v1/public/invitations/{token}` endpoints) |
+| **Public Wedding Website** | Dynamic public vanity portal (`/w/[slug]`) showcasing couple story, countdown, full multi-event itinerary, venue address, and RSVP CTA. | **Implemented & Verified** (`frontend/src/app/w/[slug]/page.tsx` and `backend/app/api/v1/public_weddings.py`) |
 | **QR Code Generation** | Dynamic generation of QR codes directing guests to the public wedding website URL (`/w/[slug]`). | **Planned** (Library selection pending) |
-| **Private Photo Gallery** | Secure album-based photo display backed by Google Cloud Storage, accessed strictly via short-lived signed URLs. | **Planned** (GCS bucket and signing service pending) |
+| **Private Photo Gallery** | Secure album-based photo display backed by Google Cloud Storage, accessed strictly via short-lived signed URLs. | **Blocked** (GCS bucket and signing service pending credentials) |
 | **Livestream Integration** | Optional embed or external redirect link (e.g., YouTube Live) for remote wedding attendees. | **Planned** (Data schema ready; UI pending) |
-| **Authentication & Accounts** | Multi-role user registration (`/signup`), credential authentication (`/login`), session verification (`/api/v1/auth/me`), and secure logout (`/logout`). | **Implemented & Verified** (Backend endpoints and frontend split-screen UI fully functional) |
+| **Authentication & Accounts** | Multi-role user registration (`/signup`), credential authentication (`/login`), session verification (`/api/v1/auth/me`), password recovery, and secure logout across all pages. | **Implemented & Verified** (PBKDF2-HMAC-SHA256, HMAC tokens, reactive `AuthContext`, and split-screen UI) |
 
 ### 2.2 Features Explicitly Excluded from V1 Release Scope
 

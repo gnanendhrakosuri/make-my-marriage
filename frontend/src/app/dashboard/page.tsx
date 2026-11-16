@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL } from '@/lib/constants';
+import GuestManagementTab from '@/components/dashboard/GuestManagementTab';
+import InvitationsRsvpTab from '@/components/dashboard/InvitationsRsvpTab';
+import WeddingDetailsTab from '@/components/dashboard/WeddingDetailsTab';
+import SettingsTab from '@/components/dashboard/SettingsTab';
 
 interface WeddingEvent {
   id: string;
@@ -55,12 +59,49 @@ interface TaskItem {
   completed: boolean;
 }
 
+type TabType = 'dashboard' | 'wedding-details' | 'guests' | 'invitations' | 'settings';
+const VALID_TABS: TabType[] = ['dashboard', 'wedding-details', 'guests', 'invitations', 'settings'];
+
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center font-headline-sm text-primary">Loading Atelier Dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // Read initial tab from URL query param e.g. /dashboard?tab=guests
+  const tabFromQuery = (searchParams.get('tab') as TabType) || 'dashboard';
+  const initialTab: TabType = VALID_TABS.includes(tabFromQuery) ? tabFromQuery : 'dashboard';
+
   // Layout UI State
+  const [activeTab, setActiveTabState] = useState<TabType>(initialTab);
+
+  // Custom tab changer that keeps the URL in sync without triggering full page reloads
+  const setActiveTab = useCallback((tab: TabType) => {
+    setActiveTabState(tab);
+    const newUrl = tab === 'dashboard' ? '/dashboard' : `/dashboard?tab=${tab}`;
+    window.history.pushState(null, '', newUrl);
+  }, []);
+
+  // Listen to browser forward/back buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = (urlParams.get('tab') as TabType) || 'dashboard';
+      if (VALID_TABS.includes(tab)) {
+        setActiveTabState(tab);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -147,6 +188,10 @@ export default function DashboardPage() {
   const [guests, setGuests] = useState<GuestItem[]>([]);
   const [, setIsLoading] = useState(true);
 
+  const handleGuestsUpdated = useCallback((updatedGuests: GuestItem[]) => {
+    setGuests(updatedGuests);
+  }, []);
+
   // Task Management State
   const [isTaskInputOpen, setIsTaskInputOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -218,55 +263,53 @@ export default function DashboardPage() {
   }, [wedding]);
 
   // Fetch wedding details and guests from backend API
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setIsLoading(true);
-        if (weddingId) {
-          const [wedRes, guestsRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/api/v1/weddings/${weddingId}`, { credentials: 'include' }),
-            fetch(`${API_BASE_URL}/api/v1/weddings/${weddingId}/guests`, { credentials: 'include' }),
-          ]);
+  const refreshData = useCallback(async () => {
+    if (!weddingId) return;
+    try {
+      setIsLoading(true);
+      const [wedRes, guestsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/weddings/${weddingId}`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/api/v1/weddings/${weddingId}/guests`, { credentials: 'include' }),
+      ]);
 
-          if (wedRes.ok) {
-            const wedData = await wedRes.json();
-            setWedding(wedData);
-            if (wedData.events && wedData.events.length > 0) {
-              setEvents((prev) => {
-                const fetched: WeddingEvent[] = wedData.events.map((e: WeddingEvent, idx: number) => ({
-                  id: e.id || `event-${idx}`,
-                  title: e.title,
-                  date: e.date || 'TBD',
-                  startTime: e.startTime || 'TBD',
-                  endTime: e.endTime,
-                  location: e.location || 'Lake Como',
-                  dressCode: e.dressCode,
-                  statusBadge: 'Scheduled',
-                  statusClass: 'bg-tertiary-fixed/40 text-on-tertiary-container',
-                  guestCount: e.dressCode ? `Dress Code: ${e.dressCode}` : 'All Invited Guests',
-                  isPrimary: idx === 1 || e.title.toLowerCase().includes('ceremony'),
-                }));
-                // Combine custom events with design defaults
-                const existingIds = new Set(fetched.map((f) => f.title.toLowerCase()));
-                const keptDefaults = prev.filter((p) => !existingIds.has(p.title.toLowerCase()));
-                return [...fetched, ...keptDefaults];
-              });
-            }
-          }
-          if (guestsRes.ok) {
-            const guestData = await guestsRes.json();
-            setGuests(guestData.guests || []);
-          }
+      if (wedRes.ok) {
+        const wedData = await wedRes.json();
+        setWedding(wedData);
+        if (wedData.events && wedData.events.length > 0) {
+          setEvents((prev) => {
+            const fetched: WeddingEvent[] = wedData.events.map((e: WeddingEvent, idx: number) => ({
+              id: e.id || `event-${idx}`,
+              title: e.title,
+              date: e.date || 'TBD',
+              startTime: e.startTime || 'TBD',
+              endTime: e.endTime,
+              location: e.location || 'Lake Como',
+              dressCode: e.dressCode,
+              statusBadge: 'Scheduled',
+              statusClass: 'bg-tertiary-fixed/40 text-on-tertiary-container',
+              guestCount: e.dressCode ? `Dress Code: ${e.dressCode}` : 'All Invited Guests',
+              isPrimary: idx === 1 || e.title.toLowerCase().includes('ceremony'),
+            }));
+            const existingIds = new Set(fetched.map((f) => f.title.toLowerCase()));
+            const keptDefaults = prev.filter((p) => !existingIds.has(p.title.toLowerCase()));
+            return [...fetched, ...keptDefaults];
+          });
         }
-      } catch (err) {
-        console.warn('Backend data load fallback to design defaults:', err);
-      } finally {
-        setIsLoading(false);
       }
+      if (guestsRes.ok) {
+        const guestData = await guestsRes.json();
+        setGuests(Array.isArray(guestData) ? guestData : guestData.guests || []);
+      }
+    } catch (err) {
+      console.warn('Backend data load fallback to design defaults:', err);
+    } finally {
+      setIsLoading(false);
     }
-
-    loadData();
   }, [weddingId]);
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   // Toggle task completion
   const handleToggleTask = (taskId: string) => {
@@ -455,10 +498,10 @@ export default function DashboardPage() {
     : "Villa d&apos;Este, Lake Como, Italy";
   const weddingDateDisplay = wedding?.weddingDate
     ? new Date(wedding.weddingDate).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
     : 'October 24, 2025';
 
   const liveWebsiteUrl = wedding?.slug ? `/w/${wedding.slug}` : '/w/sarah-julian';
@@ -765,8 +808,8 @@ export default function DashboardPage() {
                   {isSubmittingEvent
                     ? "Saving..."
                     : editingEvent
-                    ? "Save Changes"
-                    : "Add Event to Schedule"}
+                      ? "Save Changes"
+                      : "Add Event to Schedule"}
                 </button>
               </div>
             </form>
@@ -774,696 +817,830 @@ export default function DashboardPage() {
         </div>
       )}
 
-<aside
-  className={`fixed left-0 top-0 h-full w-72 bg-ivory-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(74,18,26,0.04)] transition-all duration-300 ${
-    sidebarCollapsed ? "-translate-x-full lg:translate-x-0 lg:w-20" : "translate-x-0"
-  }`}
->
-  {/* Collapsed mini-sidebar on large screens */}
-  {sidebarCollapsed && (
-    <div className="hidden lg:flex flex-col items-center py-6 h-full justify-between">
-      <div className="flex flex-col items-center gap-6">
-        <div className="w-10 h-10 rounded-full bg-ivory-highlight flex items-center justify-center shadow-xs">
-          <span className="font-headline-sm text-sm italic text-primary leading-none">MMM</span>
-        </div>
-        <Link href="/dashboard" className="p-2.5 rounded-lg bg-burgundy-velvet text-on-primary">
-          <span className="material-symbols-outlined text-[20px]">space_dashboard</span>
-        </Link>
-        <Link href="/dashboard/guests" className="p-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container">
-          <span className="material-symbols-outlined text-[20px]">group</span>
-        </Link>
-        <Link href="/onboarding" className="p-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container">
-          <span className="material-symbols-outlined text-[20px]">favorite</span>
-        </Link>
-      </div>
-      <button
-        onClick={() => setSidebarCollapsed(false)}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
-      >
-        <span className="material-symbols-outlined text-[20px]">last_page</span>
-      </button>
-    </div>
-  )}
-
-  {/* Full width sidebar content */}
-  <div className={`flex flex-col ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-    {/* Brand Header */}
-    <div className="h-20 px-6 flex items-center gap-3">
-      <div className="w-11 h-11 rounded-full bg-ivory-highlight flex items-center justify-center p-0.5 shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
-        <div className="w-full h-full rounded-full flex items-center justify-center bg-ivory-base">
-          <span className="font-headline-sm text-headline-sm italic text-primary leading-none tracking-tighter">
-            MMM
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-col">
-        <span className="font-headline-sm text-headline-sm tracking-wide text-charcoal-ink font-normal leading-tight">
-          Make My Marriage
-        </span>
-        <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary">
-          Atelier Privé
-        </span>
-      </div>
-    </div>
-
-    {/* Navigation Links */}
-    <nav className="px-4 py-2 space-y-1">
-      <Link
-        aria-current="page"
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]"
-        data-path="dashboard"
-        href="/dashboard"
-      >
-        <span className="material-symbols-outlined text-[20px]">space_dashboard</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Dashboard</span>
-      </Link>
-      <Link
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-        data-path="wedding-details"
-        href="/onboarding"
-      >
-        <span className="material-symbols-outlined text-[20px]">favorite</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Wedding Details</span>
-      </Link>
-      <a
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-        data-path="event-planner"
-        href="#itinerary-section"
-      >
-        <span className="material-symbols-outlined text-[20px]">calendar_month</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Event Planner</span>
-      </a>
-      <Link
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-        data-path="guest-management"
-        href="/dashboard/guests"
-      >
-        <span className="material-symbols-outlined text-[20px]">group</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Guest Management</span>
-      </Link>
-      <Link
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-        data-path="invitations-and-rsvp"
-        href="/dashboard/guests"
-      >
-        <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Invitations & RSVP</span>
-      </Link>
-      <a
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-        data-path="task-planner"
-        href="#tasks-section"
-      >
-        <span className="material-symbols-outlined text-[20px]">checklist_rtl</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Task Planner</span>
-      </a>
-      <button
-        onClick={() => showToast("Expense Tracker is scheduled for Atelier Tier II release.")}
-        className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
-        data-path="expense-tracker"
-        type="button"
-      >
-        <span className="material-symbols-outlined text-[20px]">payments</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Expense Tracker</span>
-      </button>
-      <button
-        onClick={() => showToast("Photo Gallery module loaded.")}
-        className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
-        data-path="photo-gallery"
-        type="button"
-      >
-        <span className="material-symbols-outlined text-[20px]">photo_library</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Photo Gallery</span>
-      </button>
-      <Link
-        className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all"
-        data-path="settings"
-        href="/onboarding"
-      >
-        <span className="material-symbols-outlined text-[20px]">settings</span>
-        <span className="font-body-sm text-body-sm tracking-normal">Settings</span>
-      </Link>
-    </nav>
-  </div>
-
-  {/* Active Wedding Info Card & Footer Actions */}
-  <div className={`p-4 flex flex-col gap-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-    <div className="p-3.5 rounded-xl bg-ivory-highlight shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="font-headline-sm text-headline-sm text-charcoal-ink font-normal">
-          {wedding?.coupleNames?.join(" & ") || "Sarah & Julian"}
-        </span>
-        <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
-      </div>
-      <p className="font-body-sm text-body-sm text-stone-muted">
-        {weddingDateDisplay} • {wedding?.venueCity || "Lake Como"}
-      </p>
-      <div className="mt-3 pt-2 flex items-center justify-between text-stone-muted border-t border-[#C5A059]/15">
-        <Link
-          href="/onboarding"
-          className="font-label-sm text-label-sm uppercase tracking-wider text-primary hover:text-burgundy-velvet transition-colors"
-        >
-          Switch Wedding
-        </Link>
-        <span className="font-label-sm text-label-sm text-on-surface-variant">•</span>
-        <button
-          onClick={() => setShowConciergeModal(true)}
-          className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant hover:text-charcoal-ink transition-colors"
-          type="button"
-        >
-          Concierge Support
-        </button>
-      </div>
-    </div>
-
-    <div className="flex items-center justify-between px-2 pt-1">
-      <button
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-        className="flex items-center gap-2 text-on-surface-variant hover:text-burgundy-velvet transition-colors disabled:opacity-50"
-        type="button"
-      >
-        <span className="material-symbols-outlined text-[18px]">logout</span>
-        <span className="font-label-md text-label-md uppercase tracking-wider">
-          {isLoggingOut ? "Signing Out..." : "Sign Out"}
-        </span>
-      </button>
-      <button
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
-        type="button"
-      >
-        <span className="material-symbols-outlined text-[18px]">
-          {sidebarCollapsed ? "last_page" : "first_page"}
-        </span>
-      </button>
-    </div>
-  </div>
-</aside>
-
-<header className={`fixed top-0 right-0 h-20 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-4 sm:px-8 shadow-[0_1px_8px_rgba(74,18,26,0.03)] transition-all duration-300 ${sidebarCollapsed ? "left-0 lg:left-20" : "left-0 lg:left-72"}`}>
-<button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="lg:hidden mr-3 p-2 rounded-lg text-charcoal-ink hover:bg-surface-container" type="button"><span className="material-symbols-outlined text-[24px]">menu</span></button><div className="w-96"><div className="relative flex items-center"><span className="material-symbols-outlined absolute left-3.5 text-stone-muted text-[20px]">search</span><input className="w-full pl-11 pr-4 py-2 rounded-full bg-ivory-surface font-body-sm text-body-sm text-charcoal-ink placeholder:text-stone-muted focus:outline-none focus:bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)] transition-all" placeholder="Search guests, vendors, tasks..." type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div><div className="flex items-center gap-6"><div className="hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-ivory-surface shadow-[0_1px_3px_rgba(30,26,24,0.03)]"><span className="w-2 h-2 rounded-full bg-gold-champagne"></span><span className="font-label-md text-label-md text-charcoal-ink">Status: Live Website</span><span className="text-stone-muted">•</span><span className="font-label-md text-label-md text-primary font-semibold">{countdown.days} Days To Go</span></div><div className="relative">
-  <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-ivory-surface hover:text-on-surface transition-colors" type="button">
-    <span className="material-symbols-outlined text-[22px]">notifications</span>
-  </button>
-  <span className="absolute top-2 right-2 w-2 h-2 bg-burgundy-velvet rounded-full animate-pulse"></span>
-  {showNotifications && (
-    <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-ivory-highlight p-4 shadow-[0_8px_30px_rgba(74,18,26,0.12)] border border-[#C5A059]/30 z-50">
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#C5A059]/20">
-        <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-semibold">Atelier Notifications</span>
-        <span className="font-label-sm text-label-sm text-stone-muted">2 New</span>
-      </div>
-      <div className="space-y-2.5">
-        <div className="p-2.5 rounded-xl bg-ivory-surface text-left">
-          <p className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Lord & Lady Harrington confirmed RSVP</p>
-          <span className="font-label-sm text-label-sm text-stone-muted mt-1 block">2 minutes ago • Truffle Risotto</span>
-        </div>
-        <div className="p-2.5 rounded-xl bg-ivory-surface text-left">
-          <p className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Villa d&apos;Este Sommelier signed off cellar list</p>
-          <span className="font-label-sm text-label-sm text-stone-muted mt-1 block">1 hour ago • Barolo Riserva 2016</span>
-        </div>
-      </div>
-    </div>
-  )}
-</div><div className="flex items-center gap-3 pl-3"><div className="flex flex-col text-right"><span className="font-body-sm text-body-sm font-semibold text-charcoal-ink leading-tight">{userName}</span><span className="font-label-sm text-label-sm text-primary uppercase tracking-wider">{userRoleDisplay}</span></div><div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span className="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header>
-
-<main className={`w-full pt-24 px-4 sm:px-8 bg-surface min-h-screen transition-all duration-300 ${sidebarCollapsed ? "pl-4 lg:pl-28" : "pl-4 lg:pl-80"}`}>
-<div className="max-w-[1560px] mx-auto w-full pb-16"><div className="flex flex-col w-full pb-16">
-{/**/}
-<section className="relative w-full rounded-2xl bg-ivory-surface p-8 lg:p-10 shadow-[0_4px_24px_-4px_rgba(74,18,26,0.05)] overflow-hidden">
-<div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-tertiary-fixed/20 blur-3xl pointer-events-none"></div>
-<div className="absolute -left-20 -bottom-20 w-72 h-72 rounded-full bg-secondary-fixed/20 blur-3xl pointer-events-none"></div>
-<div className="relative z-10 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
-{/**/}
-<div className="flex flex-col max-w-2xl">
-<div className="flex items-center gap-3 mb-3">
-<span className="px-3.5 py-1 rounded-full bg-ivory-highlight font-label-sm text-label-sm uppercase tracking-widest text-primary shadow-[0_1px_3px_rgba(30,26,24,0.04)]">
-            {weddingVenueDisplay} • {weddingDateDisplay}
-          </span>
-<span className="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-gold-champagne font-semibold uppercase tracking-wider">
-<span className="w-1.5 h-1.5 rounded-full bg-gold-champagne animate-ping"></span>
-            Live Atelier
-          </span>
-</div>
-<h1 className="font-headline-lg text-headline-lg text-charcoal-ink tracking-tight mb-2">
-          {partnerOne} <span className="italic font-normal text-gold-champagne">&</span> {partnerTwo}
-        </h1>
-<p className="font-body-md text-body-md text-stone-muted leading-relaxed">
-          Welcome back, {userName}. The bespoke celebration dossier is synchronized with {wedding?.venueName || "Villa d&apos;Este"} hospitality desk and Lake Como Riva transit.
-        </p>
-{/**/}
-<div className="flex flex-wrap items-center gap-3 mt-6">
-<button onClick={() => setShowPublishModal(true)} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-burgundy-velvet text-on-primary font-label-md text-label-md uppercase tracking-wider shadow-[0_4px_16px_rgba(74,18,26,0.22)] hover:bg-burgundy-hover transition-all" type="button">
-<span>Publish Guest Update</span>
-<span className="material-symbols-outlined text-[16px]">campaign</span>
-</button>
-<Link href={liveWebsiteUrl} target="_blank" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-ivory-highlight text-charcoal-ink font-label-md text-label-md uppercase tracking-wider shadow-[0_2px_8px_-2px_rgba(74,18,26,0.06)] hover:bg-surface-container transition-all">
-<span>View Live Website</span>
-<span className="material-symbols-outlined text-[16px] text-primary">arrow_outward</span>
-</Link>
-</div>
-</div>
-{/**/}
-<div className="flex flex-col sm:flex-row items-center gap-3 self-start xl:self-center p-5 rounded-xl bg-ivory-highlight shadow-[0_3px_12px_-2px_rgba(74,18,26,0.04)]">
-<div className="flex items-center gap-2 text-primary font-label-sm text-label-sm uppercase tracking-widest sm:[writing-mode:vertical-rl] sm:rotate-180 sm:pr-2">
-<span className="material-symbols-outlined text-[16px]">search_off</span>
-<span>Time To Vows</span>
-</div>
-<div className="grid grid-cols-3 gap-3 w-full sm:w-auto">
-{/**/}
-<div className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-surface-container-lowest shadow-[0_2px_6px_rgba(30,26,24,0.03)] p-2">
-<span className="font-display-lg text-display-lg leading-none text-charcoal-ink font-normal" >{countdown.days}</span>
-<span className="font-label-sm text-label-sm text-stone-muted uppercase tracking-wider mt-1.5">Days</span>
-</div>
-{/**/}
-<div className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-surface-container-lowest shadow-[0_2px_6px_rgba(30,26,24,0.03)] p-2">
-<span className="font-display-lg text-display-lg leading-none text-charcoal-ink font-normal" >{countdown.hours}</span>
-<span className="font-label-sm text-label-sm text-stone-muted uppercase tracking-wider mt-1.5">Hours</span>
-</div>
-{/**/}
-<div className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-surface-container-lowest shadow-[0_2px_6px_rgba(30,26,24,0.03)] p-2">
-<span className="font-display-lg text-display-lg leading-none text-primary font-normal" >{countdown.minutes}</span>
-<span className="font-label-sm text-label-sm text-primary uppercase tracking-wider mt-1.5">Minutes</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-{/**/}
-<section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">
-{/**/}
-<div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
-<div>
-<div className="flex items-center justify-between mb-3">
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Attendance</span>
-<span className="px-2 py-0.5 rounded-full bg-ivory-highlight font-label-sm text-label-sm text-charcoal-ink">88% Quota</span>
-</div>
-<div className="flex items-baseline gap-2">
-<span className="font-headline-md text-headline-md text-charcoal-ink font-medium">184</span>
-<span className="font-body-sm text-body-sm text-stone-muted">/ 210 Guests</span>
-</div>
-<p className="font-body-sm text-body-sm text-stone-muted mt-0.5">18 pending responses • 8 regrets</p>
-</div>
-{/**/}
-<div className="mt-4 pt-3">
-<div className="flex h-2 w-full rounded-full overflow-hidden bg-surface-container">
-<div className="bg-primary h-full" style={{ width: "%" }}></div>
-<div className="bg-gold-champagne h-full" style={{ width: "%" }}></div>
-<div className="bg-secondary-container h-full" style={{ width: "%" }}></div>
-</div>
-<div className="flex items-center justify-between text-stone-muted font-label-sm text-label-sm mt-2">
-<span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-primary"></span> 112 Risotto</span>
-<span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gold-champagne"></span> 64 Bass</span>
-<span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> 8 Vegan</span>
-</div>
-</div>
-</div>
-{/**/}
-<div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
-<div>
-<div className="flex items-center justify-between mb-3">
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Couture Budget</span>
-<span className="px-2 py-0.5 rounded-full bg-tertiary-fixed/40 font-label-sm text-label-sm text-on-tertiary-container font-semibold">On Track</span>
-</div>
-<div className="flex items-baseline gap-2">
-<span className="font-headline-md text-headline-md text-charcoal-ink font-medium">€148,500</span>
-<span className="font-body-sm text-body-sm text-stone-muted">/ €180k</span>
-</div>
-<p className="font-body-sm text-body-sm text-stone-muted mt-0.5">€31,500 unallocated buffer balance</p>
-</div>
-<div className="mt-4 pt-3 flex items-center justify-between">
-<div className="flex flex-col">
-<span className="font-label-sm text-label-sm uppercase tracking-wider text-stone-muted">Committed</span>
-<span className="font-headline-sm text-headline-sm text-primary">82.5%</span>
-</div>
-{/**/}
-<svg className="w-24 h-8 text-primary overflow-visible" fill="none" viewBox="0 0 100 30">
-<path d="M0 25 C20 22, 30 18, 50 15 C70 12, 85 8, 100 4" stroke="currentColor" strokeLinecap="round" strokeWidth="2.5"></path>
-<circle cx="100" cy="4" fill="#4A121A" r="3.5" />
-</svg>
-</div>
-</div>
-{/**/}
-<div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
-<div>
-<div className="flex items-center justify-between mb-3">
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Milestones</span>
-<span className="px-2 py-0.5 rounded-full bg-ivory-highlight font-label-sm text-label-sm text-burgundy-velvet font-semibold">4 Due This Week</span>
-</div>
-<div className="flex items-baseline gap-2">
-<span className="font-headline-md text-headline-md text-charcoal-ink font-medium">42</span>
-<span className="font-body-sm text-body-sm text-stone-muted">/ 56 Curated Tasks</span>
-</div>
-<p className="font-body-sm text-body-sm text-stone-muted mt-0.5">75% milestone deliverables completed</p>
-</div>
-<div className="mt-4 pt-3">
-<div className="w-full bg-surface-container rounded-full h-2">
-<div className="bg-burgundy-velvet h-2 rounded-full" style={{ width: "%" }}></div>
-</div>
-<div className="flex items-center justify-between font-label-sm text-label-sm text-stone-muted mt-2">
-<span>Phase 3: Production</span>
-<span className="text-charcoal-ink font-semibold">14 to go</span>
-</div>
-</div>
-</div>
-{/**/}
-<div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
-<div>
-<div className="flex items-center justify-between mb-3">
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Stationery Dispatch</span>
-<span className="px-2 py-0.5 rounded-full bg-ivory-highlight font-label-sm text-label-sm text-charcoal-ink">98% Open Rate</span>
-</div>
-<div className="flex items-baseline gap-2">
-<span className="font-headline-md text-headline-md text-charcoal-ink font-medium">210 / 210</span>
-<span className="font-body-sm text-body-sm text-stone-muted">Dispatched</span>
-</div>
-<p className="font-body-sm text-body-sm text-stone-muted mt-0.5">Calligraphy email & WhatsApp suite</p>
-</div>
-<div className="mt-4 pt-3 flex items-center justify-between">
-<div className="flex items-center gap-2">
-<span className="w-7 h-7 rounded-full bg-tertiary-fixed/50 flex items-center justify-center text-primary">
-<span className="material-symbols-outlined text-[16px]">send</span>
-</span>
-<span className="font-body-sm text-body-sm text-charcoal-ink">206 Opened</span>
-</div>
-<div className="flex items-center gap-1 text-primary">
-<span className="material-symbols-outlined text-[16px]">check_circle</span>
-<span className="font-label-sm text-label-sm uppercase tracking-wider">Zero Bounced</span>
-</div>
-</div>
-</div>
-</section>
-{/**/}
-<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-8">
-{/**/}
-<div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-8">
-{/**/}
-<div className="flex flex-col p-6 lg:p-7 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
-<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-<div>
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">The Weekend Suite</span>
-<h2 id="itinerary-section" className="font-headline-md text-headline-md text-charcoal-ink mt-0.5">Multi-Day Wedding Itinerary</h2>
-</div>
-<div className="flex items-center gap-2">
-<button onClick={openAddEventModal} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-burgundy-velvet text-on-primary font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all shadow-[0_2px_8px_rgba(74,18,26,0.2)]">
-<span className="material-symbols-outlined text-[16px]">add</span>
-<span>Add Event</span>
-</button>
-<Link href="/onboarding" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-ivory-highlight text-primary font-label-md text-label-md uppercase tracking-wider hover:bg-surface-container transition-all">
-<span className="material-symbols-outlined text-[16px]">tune</span>
-<span>Full Schedule</span>
-</Link>
-</div>
-</div>
-{/**/}
-<div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-3 before:w-0.5 before:bg-gold-champagne/40">
-
-{filteredEvents.length === 0 ? (
-  <div className="p-8 text-center rounded-xl bg-ivory-highlight border border-[#C5A059]/20">
-    <span className="material-symbols-outlined text-[32px] text-stone-muted mb-2">event_busy</span>
-    <p className="font-headline-sm text-sm text-charcoal-ink font-semibold">No celebration events found</p>
-    <p className="font-body-sm text-xs text-stone-muted mt-1">
-      {searchQuery ? `No events match "${searchQuery}".` : "Add the first event to begin orchestrating your wedding weekend."}
-    </p>
-    <button
-      onClick={openAddEventModal}
-      className="mt-4 px-4 py-1.5 rounded-full bg-burgundy-velvet text-on-primary font-label-sm text-label-sm uppercase tracking-wider hover:bg-burgundy-hover transition-colors"
-      type="button"
-    >
-      Add Event Now
-    </button>
-  </div>
-) : (
-  filteredEvents.map((ev) => (
-  <div
-    key={ev.id}
-    className={`relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl transition-all hover:shadow-md ${
-      ev.isPrimary
-        ? "bg-surface-container-lowest shadow-[0_2px_8px_-1px_rgba(74,18,26,0.06)]"
-        : "bg-ivory-highlight shadow-[0_1px_4px_rgba(30,26,24,0.03)]"
-    }`}
-  >
-    <span
-      className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full ring-4 ring-ivory-surface ${
-        ev.isPrimary ? "bg-burgundy-velvet" : "bg-gold-champagne"
-      }`}
-    ></span>
-    <div className="flex flex-col min-w-0">
-      <div className="flex items-center gap-2 mb-1">
-        <span
-          className={`px-2 py-0.5 rounded font-label-sm text-label-sm uppercase font-semibold ${
-            ev.isPrimary ? "bg-burgundy-velvet text-on-primary" : "bg-surface-container text-primary"
+      <aside
+        className={`fixed left-0 top-0 h-full w-72 bg-ivory-surface z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(74,18,26,0.04)] transition-all duration-300 ${sidebarCollapsed ? "-translate-x-full lg:translate-x-0 lg:w-20" : "translate-x-0"
           }`}
-        >
-          {ev.date} • {ev.startTime}
-        </span>
-        <span className="font-body-sm text-body-sm text-stone-muted">{ev.location}</span>
-      </div>
-      <h3 className="font-headline-sm text-headline-sm text-charcoal-ink truncate">{ev.title}</h3>
-      <p className="font-body-sm text-body-sm text-stone-muted mt-0.5">{ev.guestCount}</p>
-    </div>
-    <div className="flex items-center gap-3 shrink-0">
-      <span
-        className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider font-semibold ${
-          ev.statusClass || "bg-tertiary-fixed/40 text-on-tertiary-container"
-        }`}
       >
-        {ev.statusBadge || "Confirmed"}
-      </span>
-      <button
-        onClick={() => openEditEventModal(ev)}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-stone-muted hover:text-charcoal-ink hover:bg-surface-container transition-colors"
-        type="button"
-        title="Edit event details"
-      >
-        <span className="material-symbols-outlined text-[18px]">edit</span>
-      </button>
-      <button
-        onClick={() => handleDeleteEvent(ev.id, ev.title)}
-        disabled={deletingEventId === ev.id}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-stone-muted hover:text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50"
-        type="button"
-        title="Remove event from itinerary"
-      >
-        <span className="material-symbols-outlined text-[18px]">delete</span>
-      </button>
-    </div>
-  </div>
-  ))
-)}
-</div>
-</div>
-{/**/}
-<div className="flex flex-col p-6 lg:p-7 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
-<div className="flex items-center justify-between mb-5">
-<div>
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Action Items</span>
-<h2 id="tasks-section" className="font-headline-md text-headline-md text-charcoal-ink mt-0.5">Priority Tasks Due This Week</h2>
-</div>
-<button className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-burgundy-velvet text-on-primary font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-colors" onClick={() => setIsTaskInputOpen(!isTaskInputOpen)} type="button">
-<span className="material-symbols-outlined text-[16px]">add</span>
-<span>Add Task</span>
-</button>
-</div>
-{/**/}
-{isTaskInputOpen && (
-  <div className="mb-4 p-3 rounded-xl bg-ivory-highlight flex items-center gap-3 shadow-[0_1px_4px_rgba(30,26,24,0.04)]">
-    <input
-      value={newTaskTitle}
-      onChange={(e) => setNewTaskTitle(e.target.value)}
-      onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-      className="w-full bg-transparent font-body-sm text-body-sm text-charcoal-ink placeholder:text-stone-muted focus:outline-none"
-      placeholder="Enter new wedding task description..."
-      type="text"
-      autoFocus
-    />
-    <button
-      onClick={handleAddTask}
-      className="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm uppercase tracking-wider hover:bg-burgundy-velvet transition-colors"
-      type="button"
-    >
-      Save
-    </button>
-  </div>
-)}
-{/**/}
-<div className="space-y-3" id="task-dossier">
-  {filteredTasks.length === 0 ? (
-  <div className="p-6 text-center rounded-xl bg-ivory-highlight border border-[#C5A059]/20">
-    <p className="font-body-sm text-stone-muted text-xs">
-      {searchQuery ? `No tasks match "${searchQuery}".` : "No pending tasks in this category."}
-    </p>
-  </div>
-) : (
-  filteredTasks.map((task) => (
-    <div
-      key={task.id}
-      className="group flex items-start justify-between gap-4 p-4 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all"
-    >
-      <div className="flex items-start gap-3">
-        <label className="relative flex items-center justify-center w-5 h-5 mt-0.5 cursor-pointer">
-          <input
-            checked={task.completed}
-            onChange={() => handleToggleTask(task.id)}
-            className="peer sr-only"
-            type="checkbox"
-          />
-          <span className="w-5 h-5 rounded-full bg-surface-container peer-checked:bg-burgundy-velvet flex items-center justify-center transition-colors">
-            <span className="material-symbols-outlined text-on-primary text-[14px] opacity-0 peer-checked:opacity-100">
-              check
-            </span>
-          </span>
-        </label>
-        <div className="flex flex-col">
-          <span
-            className={`font-body-md text-body-md text-charcoal-ink font-medium leading-tight ${
-              task.completed ? "line-through opacity-60" : ""
-            }`}
-          >
-            {task.title}
-          </span>
-          <span className="font-body-sm text-body-sm text-stone-muted mt-1">
-            {task.description}
-          </span>
+        {/* Collapsed mini-sidebar on large screens */}
+        {sidebarCollapsed && (
+          <div className="hidden lg:flex flex-col items-center py-6 h-full justify-between">
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-10 h-10 rounded-full bg-ivory-highlight flex items-center justify-center shadow-xs">
+                <span className="font-headline-sm text-sm italic text-primary leading-none">MMM</span>
+              </div>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                title="Dashboard Overview"
+                className={`p-2.5 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">space_dashboard</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('wedding-details')}
+                title="Wedding Details"
+                className={`p-2.5 rounded-lg transition-colors ${activeTab === 'wedding-details' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">favorite</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('guests')}
+                title="Guest Management"
+                className={`p-2.5 rounded-lg transition-colors ${activeTab === 'guests' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">group</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('invitations')}
+                title="Invitations & RSVP"
+                className={`p-2.5 rounded-lg transition-colors ${activeTab === 'invitations' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                title="Atelier Settings"
+                className={`p-2.5 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">settings</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">last_page</span>
+            </button>
+          </div>
+        )}
+
+        {/* Full width sidebar content */}
+        <div className={`flex flex-col ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+          {/* Brand Header */}
+          <div className="h-20 px-6 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-ivory-highlight flex items-center justify-center p-0.5 shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
+              <div className="w-full h-full rounded-full flex items-center justify-center bg-ivory-base">
+                <span className="font-headline-sm text-headline-sm italic text-primary leading-none tracking-tighter">
+                  MMM
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-headline-sm text-headline-sm tracking-wide text-charcoal-ink font-normal leading-tight">
+                Make My Marriage
+              </span>
+              <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary">
+                Atelier Privé
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="px-4 py-2 space-y-1">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'dashboard'
+                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                }`}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">space_dashboard</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Dashboard</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('wedding-details')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'wedding-details'
+                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                }`}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">favorite</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Wedding Details</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('dashboard');
+                setTimeout(() => {
+                  const el = document.getElementById('itinerary-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 50);
+              }}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Event Planner</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('guests')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'guests'
+                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                }`}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">group</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Guest Management</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('invitations')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'invitations'
+                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                }`}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Invitations & RSVP</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('dashboard');
+                setTimeout(() => {
+                  const el = document.getElementById('tasks-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 50);
+              }}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">checklist_rtl</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Task Planner</span>
+            </button>
+            <button
+              onClick={() => showToast("Expense Tracker is scheduled for Atelier Tier II release.")}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
+              data-path="expense-tracker"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">payments</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Expense Tracker</span>
+            </button>
+            <button
+              onClick={() => showToast("Photo Gallery module loaded.")}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
+              data-path="photo-gallery"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">photo_library</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Photo Gallery</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'settings'
+                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                }`}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[20px]">settings</span>
+              <span className="font-body-sm text-body-sm tracking-normal">Settings</span>
+            </button>
+          </nav>
         </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className={`px-2.5 py-0.5 rounded-full font-label-sm text-label-sm uppercase tracking-wider font-semibold ${task.tagClass}`}>
-          {task.tag}
-        </span>
-      </div>
-    </div>
-  ))
-)}
-</div>
-</div>
-</div>
-{/**/}
-<div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
-{/**/}
-<div className="flex flex-col p-6 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
-<div className="flex items-center justify-between mb-4">
-<div className="flex items-center gap-2">
-<span className="w-2 h-2 rounded-full bg-gold-champagne animate-pulse"></span>
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Live Feed</span>
-</div>
-<Link href="/dashboard/guests" className="font-label-sm text-label-sm uppercase tracking-wider text-primary hover:text-burgundy-velvet transition-colors font-medium">View All {guestStats.total}</Link>
-</div>
-<h2 className="font-headline-sm text-headline-sm text-charcoal-ink mb-4">Recent RSVP Activity</h2>
-<div className="space-y-3.5">
-{/**/}
-<div className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
-<div className="flex items-center gap-3">
-<div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-primary">
-                H
+
+        {/* Active Wedding Info Card & Footer Actions */}
+        <div className={`p-4 flex flex-col gap-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+          <div className="p-3.5 rounded-xl bg-ivory-highlight shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-headline-sm text-headline-sm text-charcoal-ink font-normal">
+                {wedding?.coupleNames?.join(" & ") || "Sarah & Julian"}
+              </span>
+              <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
+            </div>
+            <p className="font-body-sm text-body-sm text-stone-muted">
+              {weddingDateDisplay} • {wedding?.venueCity || "Lake Como"}
+            </p>
+            <div className="mt-3 pt-2 flex items-center justify-between text-stone-muted border-t border-[#C5A059]/15">
+              <button
+                onClick={() => setActiveTab('wedding-details')}
+                className="font-label-sm text-label-sm uppercase tracking-wider text-primary hover:text-burgundy-velvet transition-colors"
+                type="button"
+              >
+                Switch Wedding
+              </button>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">•</span>
+              <button
+                onClick={() => setShowConciergeModal(true)}
+                className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant hover:text-charcoal-ink transition-colors"
+                type="button"
+              >
+                Concierge Support
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-2 pt-1">
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex items-center gap-2 text-on-surface-variant hover:text-burgundy-velvet transition-colors disabled:opacity-50"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[18px]">logout</span>
+              <span className="font-label-md text-label-md uppercase tracking-wider">
+                {isLoggingOut ? "Signing Out..." : "Sign Out"}
+              </span>
+            </button>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {sidebarCollapsed ? "last_page" : "first_page"}
+              </span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <header className={`fixed top-0 right-0 h-20 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-4 sm:px-8 shadow-[0_1px_8px_rgba(74,18,26,0.03)] transition-all duration-300 ${sidebarCollapsed ? "left-0 lg:left-20 dashboard-header-collapsed" : "left-0 lg:left-72 dashboard-header-expanded"}`}>
+        <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="lg:hidden mr-3 p-2 rounded-lg text-charcoal-ink hover:bg-surface-container" type="button"><span className="material-symbols-outlined text-[24px]">menu</span></button><div className="w-96"><div className="relative flex items-center"><span className="material-symbols-outlined absolute left-3.5 text-stone-muted text-[20px]">search</span><input className="w-full pl-11 pr-4 py-2 rounded-full bg-ivory-surface font-body-sm text-body-sm text-charcoal-ink placeholder:text-stone-muted focus:outline-none focus:bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)] transition-all" placeholder="Search guests, vendors, tasks..." type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div><div className="flex items-center gap-6"><div className="hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-ivory-surface shadow-[0_1px_3px_rgba(30,26,24,0.03)]"><span className="w-2 h-2 rounded-full bg-gold-champagne"></span><span className="font-label-md text-label-md text-charcoal-ink">Status: Live Website</span><span className="text-stone-muted">•</span><span className="font-label-md text-label-md text-primary font-semibold">{countdown.days} Days To Go</span></div><div className="relative">
+          <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-ivory-surface hover:text-on-surface transition-colors" type="button">
+            <span className="material-symbols-outlined text-[22px]">notifications</span>
+          </button>
+          <span className="absolute top-2 right-2 w-2 h-2 bg-burgundy-velvet rounded-full animate-pulse"></span>
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-ivory-highlight p-4 shadow-[0_8px_30px_rgba(74,18,26,0.12)] border border-[#C5A059]/30 z-50">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#C5A059]/20">
+                <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-semibold">Atelier Notifications</span>
+                <span className="font-label-sm text-label-sm text-stone-muted">2 New</span>
               </div>
-<div className="flex flex-col">
-<span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Lord & Lady Harrington (+1)</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-0.5">Truffle Risotto • 2 min ago</span>
-</div>
-</div>
-<span className="w-6 h-6 rounded-full bg-tertiary-fixed/60 flex items-center justify-center text-primary">
-<span className="material-symbols-outlined text-[14px]">check</span>
-</span>
-</div>
-{/**/}
-<div className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
-<div className="flex items-center gap-3">
-<div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-primary">
-                R
+              <div className="space-y-2.5">
+                <div className="p-2.5 rounded-xl bg-ivory-surface text-left">
+                  <p className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Lord & Lady Harrington confirmed RSVP</p>
+                  <span className="font-label-sm text-label-sm text-stone-muted mt-1 block">2 minutes ago • Truffle Risotto</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-ivory-surface text-left">
+                  <p className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Villa d&apos;Este Sommelier signed off cellar list</p>
+                  <span className="font-label-sm text-label-sm text-stone-muted mt-1 block">1 hour ago • Barolo Riserva 2016</span>
+                </div>
               </div>
-<div className="flex flex-col">
-<span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Matteo & Sofia Rossi</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-0.5">Note: Gluten-Free • 1 hr ago</span>
-</div>
-</div>
-<span className="w-6 h-6 rounded-full bg-tertiary-fixed/60 flex items-center justify-center text-primary">
-<span className="material-symbols-outlined text-[14px]">check</span>
-</span>
-</div>
-{/**/}
-<div className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
-<div className="flex items-center gap-3">
-<div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-stone-muted">
-                V
+            </div>
+          )}
+        </div><div className="flex items-center gap-3 pl-3"><div className="flex flex-col text-right"><span className="font-body-sm text-body-sm font-semibold text-charcoal-ink leading-tight">{userName}</span><span className="font-label-sm text-label-sm text-primary uppercase tracking-wider">{userRoleDisplay}</span></div><div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span className="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header>
+
+      <main className={`w-full pt-24 px-4 sm:px-8 bg-surface min-h-screen transition-all duration-300 ${sidebarCollapsed ? "pl-4 lg:pl-28 dashboard-main-collapsed" : "pl-4 lg:pl-80 dashboard-main-expanded"}`}>
+        <div className="max-w-[1560px] mx-auto w-full pb-16">
+          {activeTab === 'wedding-details' && (
+            <WeddingDetailsTab
+              weddingId={weddingId}
+              onWeddingUpdated={() => {
+                refreshData();
+              }}
+            />
+          )}
+
+          {activeTab === 'guests' && (
+            <GuestManagementTab
+              onGuestsUpdated={handleGuestsUpdated}
+              onNavigateToInvitations={() => setActiveTab('invitations')}
+            />
+          )}
+
+          {activeTab === 'invitations' && (
+            <InvitationsRsvpTab
+              onDataChanged={() => {
+                refreshData();
+              }}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsTab weddingId={weddingId} />
+          )}
+
+          {activeTab === 'dashboard' && (
+            <div className="flex flex-col w-full pb-16">
+              {/**/}
+              <section className="relative w-full rounded-2xl bg-ivory-surface p-8 lg:p-10 shadow-[0_4px_24px_-4px_rgba(74,18,26,0.05)] overflow-hidden">
+                <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-tertiary-fixed/20 blur-3xl pointer-events-none"></div>
+                <div className="absolute -left-20 -bottom-20 w-72 h-72 rounded-full bg-secondary-fixed/20 blur-3xl pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
+                  {/**/}
+                  <div className="flex flex-col max-w-2xl">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="px-3.5 py-1 rounded-full bg-ivory-highlight font-label-sm text-label-sm uppercase tracking-widest text-primary shadow-[0_1px_3px_rgba(30,26,24,0.04)]">
+                        {weddingVenueDisplay} • {weddingDateDisplay}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-gold-champagne font-semibold uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gold-champagne animate-ping"></span>
+                        Live Atelier
+                      </span>
+                    </div>
+                    <h1 className="font-headline-lg text-headline-lg text-charcoal-ink tracking-tight mb-2">
+                      {partnerOne} <span className="italic font-normal text-gold-champagne">&</span> {partnerTwo}
+                    </h1>
+                    <p className="font-body-md text-body-md text-stone-muted leading-relaxed">
+                      Welcome back, {userName}. The bespoke celebration dossier is synchronized with {wedding?.venueName || "Villa d&apos;Este"} hospitality desk and Lake Como Riva transit.
+                    </p>
+                    {/**/}
+                    <div className="flex flex-wrap items-center gap-3 mt-6">
+                      <button onClick={() => setShowPublishModal(true)} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-burgundy-velvet text-on-primary font-label-md text-label-md uppercase tracking-wider shadow-[0_4px_16px_rgba(74,18,26,0.22)] hover:bg-burgundy-hover transition-all" type="button">
+                        <span>Publish Guest Update</span>
+                        <span className="material-symbols-outlined text-[16px]">campaign</span>
+                      </button>
+                      <Link href={liveWebsiteUrl} target="_blank" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-ivory-highlight text-charcoal-ink font-label-md text-label-md uppercase tracking-wider shadow-[0_2px_8px_-2px_rgba(74,18,26,0.06)] hover:bg-surface-container transition-all">
+                        <span>View Live Website</span>
+                        <span className="material-symbols-outlined text-[16px] text-primary">arrow_outward</span>
+                      </Link>
+                    </div>
+                  </div>
+                  {/**/}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 self-start xl:self-center p-5 rounded-xl bg-ivory-highlight shadow-[0_3px_12px_-2px_rgba(74,18,26,0.04)]">
+                    <div className="flex items-center gap-2 text-primary font-label-sm text-label-sm uppercase tracking-widest sm:[writing-mode:vertical-rl] sm:rotate-180 sm:pr-2">
+                      <span className="material-symbols-outlined text-[16px]">search_off</span>
+                      <span>Time To Vows</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 w-full sm:w-auto">
+                      {/**/}
+                      <div className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-surface-container-lowest shadow-[0_2px_6px_rgba(30,26,24,0.03)] p-2">
+                        <span className="font-display-lg text-display-lg leading-none text-charcoal-ink font-normal" >{countdown.days}</span>
+                        <span className="font-label-sm text-label-sm text-stone-muted uppercase tracking-wider mt-1.5">Days</span>
+                      </div>
+                      {/**/}
+                      <div className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-surface-container-lowest shadow-[0_2px_6px_rgba(30,26,24,0.03)] p-2">
+                        <span className="font-display-lg text-display-lg leading-none text-charcoal-ink font-normal" >{countdown.hours}</span>
+                        <span className="font-label-sm text-label-sm text-stone-muted uppercase tracking-wider mt-1.5">Hours</span>
+                      </div>
+                      {/**/}
+                      <div className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-surface-container-lowest shadow-[0_2px_6px_rgba(30,26,24,0.03)] p-2">
+                        <span className="font-display-lg text-display-lg leading-none text-primary font-normal" >{countdown.minutes}</span>
+                        <span className="font-label-sm text-label-sm text-primary uppercase tracking-wider mt-1.5">Minutes</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              {/**/}
+              <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">
+                {/**/}
+                <div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Attendance</span>
+                      <span className="px-2 py-0.5 rounded-full bg-ivory-highlight font-label-sm text-label-sm text-charcoal-ink">
+                        {guestStats.total > 0 ? `${Math.round((guestStats.confirmed / guestStats.total) * 100)}% Confirmed` : '0% Quota'}
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-headline-md text-headline-md text-charcoal-ink font-medium">{guestStats.confirmed}</span>
+                      <span className="font-body-sm text-body-sm text-stone-muted">/ {guestStats.total} Guests</span>
+                    </div>
+                    <p className="font-body-sm text-body-sm text-stone-muted mt-0.5">
+                      {guestStats.pending} pending responses • {guestStats.declined} regrets
+                    </p>
+                  </div>
+                  {/**/}
+                  <div className="mt-4 pt-3">
+                    <div className="flex h-2 w-full rounded-full overflow-hidden bg-surface-container">
+                      <div
+                        className="bg-primary h-full transition-all duration-500"
+                        style={{ width: `${guestStats.total > 0 ? (guestStats.confirmed / guestStats.total) * 100 : 0}%` }}
+                      ></div>
+                      <div
+                        className="bg-gold-champagne h-full transition-all duration-500"
+                        style={{ width: `${guestStats.total > 0 ? (guestStats.pending / guestStats.total) * 100 : 0}%` }}
+                      ></div>
+                      <div
+                        className="bg-secondary-container h-full transition-all duration-500"
+                        style={{ width: `${guestStats.total > 0 ? (guestStats.declined / guestStats.total) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex items-center justify-between text-stone-muted font-label-sm text-label-sm mt-2">
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-primary"></span> {guestStats.confirmed} Confirmed</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gold-champagne"></span> {guestStats.pending} Pending</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> {guestStats.declined} Regrets</span>
+                    </div>
+                  </div>
+                </div>
+                {/**/}
+                <div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Couture Budget</span>
+                      <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed/40 font-label-sm text-label-sm text-on-tertiary-container font-semibold">On Track</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-headline-md text-headline-md text-charcoal-ink font-medium">€148,500</span>
+                      <span className="font-body-sm text-body-sm text-stone-muted">/ €180k</span>
+                    </div>
+                    <p className="font-body-sm text-body-sm text-stone-muted mt-0.5">€31,500 unallocated buffer balance</p>
+                  </div>
+                  <div className="mt-4 pt-3 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="font-label-sm text-label-sm uppercase tracking-wider text-stone-muted">Committed</span>
+                      <span className="font-headline-sm text-headline-sm text-primary">82.5%</span>
+                    </div>
+                    {/**/}
+                    <svg className="w-24 h-8 text-primary overflow-visible" fill="none" viewBox="0 0 100 30">
+                      <path d="M0 25 C20 22, 30 18, 50 15 C70 12, 85 8, 100 4" stroke="currentColor" strokeLinecap="round" strokeWidth="2.5"></path>
+                      <circle cx="100" cy="4" fill="#4A121A" r="3.5" />
+                    </svg>
+                  </div>
+                </div>
+                {/**/}
+                <div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Milestones</span>
+                      <span className="px-2 py-0.5 rounded-full bg-ivory-highlight font-label-sm text-label-sm text-burgundy-velvet font-semibold">4 Due This Week</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-headline-md text-headline-md text-charcoal-ink font-medium">42</span>
+                      <span className="font-body-sm text-body-sm text-stone-muted">/ 56 Curated Tasks</span>
+                    </div>
+                    <p className="font-body-sm text-body-sm text-stone-muted mt-0.5">75% milestone deliverables completed</p>
+                  </div>
+                  <div className="mt-4 pt-3">
+                    <div className="w-full bg-surface-container rounded-full h-2">
+                      <div className="bg-burgundy-velvet h-2 rounded-full" style={{ width: "%" }}></div>
+                    </div>
+                    <div className="flex items-center justify-between font-label-sm text-label-sm text-stone-muted mt-2">
+                      <span>Phase 3: Production</span>
+                      <span className="text-charcoal-ink font-semibold">14 to go</span>
+                    </div>
+                  </div>
+                </div>
+                {/**/}
+                <div className="flex flex-col justify-between p-5 rounded-2xl bg-ivory-surface shadow-[0_2px_8px_-2px_rgba(74,18,26,0.04)]">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Stationery Dispatch</span>
+                      <span className="px-2 py-0.5 rounded-full bg-ivory-highlight font-label-sm text-label-sm text-charcoal-ink">98% Open Rate</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-headline-md text-headline-md text-charcoal-ink font-medium">210 / 210</span>
+                      <span className="font-body-sm text-body-sm text-stone-muted">Dispatched</span>
+                    </div>
+                    <p className="font-body-sm text-body-sm text-stone-muted mt-0.5">Calligraphy email & WhatsApp suite</p>
+                  </div>
+                  <div className="mt-4 pt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-tertiary-fixed/50 flex items-center justify-center text-primary">
+                        <span className="material-symbols-outlined text-[16px]">send</span>
+                      </span>
+                      <span className="font-body-sm text-body-sm text-charcoal-ink">206 Opened</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-primary">
+                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                      <span className="font-label-sm text-label-sm uppercase tracking-wider">Zero Bounced</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              {/**/}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-8">
+                {/**/}
+                <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-8">
+                  {/**/}
+                  <div className="flex flex-col p-6 lg:p-7 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                      <div>
+                        <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">The Weekend Suite</span>
+                        <h2 id="itinerary-section" className="font-headline-md text-headline-md text-charcoal-ink mt-0.5">Multi-Day Wedding Itinerary</h2>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={openAddEventModal} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-burgundy-velvet text-on-primary font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-all shadow-[0_2px_8px_rgba(74,18,26,0.2)]">
+                          <span className="material-symbols-outlined text-[16px]">add</span>
+                          <span>Add Event</span>
+                        </button>
+                        <Link href="/onboarding" className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-ivory-highlight text-primary font-label-md text-label-md uppercase tracking-wider hover:bg-surface-container transition-all">
+                          <span className="material-symbols-outlined text-[16px]">tune</span>
+                          <span>Full Schedule</span>
+                        </Link>
+                      </div>
+                    </div>
+                    {/**/}
+                    <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-3 before:w-0.5 before:bg-gold-champagne/40">
+
+                      {filteredEvents.length === 0 ? (
+                        <div className="p-8 text-center rounded-xl bg-ivory-highlight border border-[#C5A059]/20">
+                          <span className="material-symbols-outlined text-[32px] text-stone-muted mb-2">event_busy</span>
+                          <p className="font-headline-sm text-sm text-charcoal-ink font-semibold">No celebration events found</p>
+                          <p className="font-body-sm text-xs text-stone-muted mt-1">
+                            {searchQuery ? `No events match "${searchQuery}".` : "Add the first event to begin orchestrating your wedding weekend."}
+                          </p>
+                          <button
+                            onClick={openAddEventModal}
+                            className="mt-4 px-4 py-1.5 rounded-full bg-burgundy-velvet text-on-primary font-label-sm text-label-sm uppercase tracking-wider hover:bg-burgundy-hover transition-colors"
+                            type="button"
+                          >
+                            Add Event Now
+                          </button>
+                        </div>
+                      ) : (
+                        filteredEvents.map((ev) => (
+                          <div
+                            key={ev.id}
+                            className={`relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl transition-all hover:shadow-md ${ev.isPrimary
+                                ? "bg-surface-container-lowest shadow-[0_2px_8px_-1px_rgba(74,18,26,0.06)]"
+                                : "bg-ivory-highlight shadow-[0_1px_4px_rgba(30,26,24,0.03)]"
+                              }`}
+                          >
+                            <span
+                              className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full ring-4 ring-ivory-surface ${ev.isPrimary ? "bg-burgundy-velvet" : "bg-gold-champagne"
+                                }`}
+                            ></span>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span
+                                  className={`px-2 py-0.5 rounded font-label-sm text-label-sm uppercase font-semibold ${ev.isPrimary ? "bg-burgundy-velvet text-on-primary" : "bg-surface-container text-primary"
+                                    }`}
+                                >
+                                  {ev.date} • {ev.startTime}
+                                </span>
+                                <span className="font-body-sm text-body-sm text-stone-muted">{ev.location}</span>
+                              </div>
+                              <h3 className="font-headline-sm text-headline-sm text-charcoal-ink truncate">{ev.title}</h3>
+                              <p className="font-body-sm text-body-sm text-stone-muted mt-0.5">{ev.guestCount}</p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span
+                                className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider font-semibold ${ev.statusClass || "bg-tertiary-fixed/40 text-on-tertiary-container"
+                                  }`}
+                              >
+                                {ev.statusBadge || "Confirmed"}
+                              </span>
+                              <button
+                                onClick={() => openEditEventModal(ev)}
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-stone-muted hover:text-charcoal-ink hover:bg-surface-container transition-colors"
+                                type="button"
+                                title="Edit event details"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEvent(ev.id, ev.title)}
+                                disabled={deletingEventId === ev.id}
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-stone-muted hover:text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                type="button"
+                                title="Remove event from itinerary"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  {/**/}
+                  <div className="flex flex-col p-6 lg:p-7 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
+                    <div className="flex items-center justify-between mb-5">
+                      <div>
+                        <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Action Items</span>
+                        <h2 id="tasks-section" className="font-headline-md text-headline-md text-charcoal-ink mt-0.5">Priority Tasks Due This Week</h2>
+                      </div>
+                      <button className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-burgundy-velvet text-on-primary font-label-md text-label-md uppercase tracking-wider hover:bg-burgundy-hover transition-colors" onClick={() => setIsTaskInputOpen(!isTaskInputOpen)} type="button">
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                        <span>Add Task</span>
+                      </button>
+                    </div>
+                    {/**/}
+                    {isTaskInputOpen && (
+                      <div className="mb-4 p-3 rounded-xl bg-ivory-highlight flex items-center gap-3 shadow-[0_1px_4px_rgba(30,26,24,0.04)]">
+                        <input
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                          className="w-full bg-transparent font-body-sm text-body-sm text-charcoal-ink placeholder:text-stone-muted focus:outline-none"
+                          placeholder="Enter new wedding task description..."
+                          type="text"
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleAddTask}
+                          className="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm uppercase tracking-wider hover:bg-burgundy-velvet transition-colors"
+                          type="button"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                    {/**/}
+                    <div className="space-y-3" id="task-dossier">
+                      {filteredTasks.length === 0 ? (
+                        <div className="p-6 text-center rounded-xl bg-ivory-highlight border border-[#C5A059]/20">
+                          <p className="font-body-sm text-stone-muted text-xs">
+                            {searchQuery ? `No tasks match "${searchQuery}".` : "No pending tasks in this category."}
+                          </p>
+                        </div>
+                      ) : (
+                        filteredTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="group flex items-start justify-between gap-4 p-4 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all"
+                          >
+                            <div className="flex items-start gap-3">
+                              <label className="relative flex items-center justify-center w-5 h-5 mt-0.5 cursor-pointer">
+                                <input
+                                  checked={task.completed}
+                                  onChange={() => handleToggleTask(task.id)}
+                                  className="peer sr-only"
+                                  type="checkbox"
+                                />
+                                <span className="w-5 h-5 rounded-full bg-surface-container peer-checked:bg-burgundy-velvet flex items-center justify-center transition-colors">
+                                  <span className="material-symbols-outlined text-on-primary text-[14px] opacity-0 peer-checked:opacity-100">
+                                    check
+                                  </span>
+                                </span>
+                              </label>
+                              <div className="flex flex-col">
+                                <span
+                                  className={`font-body-md text-body-md text-charcoal-ink font-medium leading-tight ${task.completed ? "line-through opacity-60" : ""
+                                    }`}
+                                >
+                                  {task.title}
+                                </span>
+                                <span className="font-body-sm text-body-sm text-stone-muted mt-1">
+                                  {task.description}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`px-2.5 py-0.5 rounded-full font-label-sm text-label-sm uppercase tracking-wider font-semibold ${task.tagClass}`}>
+                                {task.tag}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/**/}
+                <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+                  {/**/}
+                  <div className="flex flex-col p-6 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-gold-champagne animate-pulse"></span>
+                        <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold">Live Feed</span>
+                      </div>
+                      <button onClick={() => setActiveTab("guests")} className="font-label-sm text-label-sm uppercase tracking-wider text-primary hover:text-burgundy-velvet transition-colors font-medium">View All {guestStats.total}</button>
+                    </div>
+                    <h2 className="font-headline-sm text-headline-sm text-charcoal-ink mb-4">Recent RSVP Activity</h2>
+                    <div className="space-y-3.5">
+                      {guests.length > 0 ? (
+                        guests.slice(0, 4).map((g) => {
+                          const isYes = g.rsvpStatus === 'yes';
+                          const isNo = g.rsvpStatus === 'no';
+                          const initial = (g.name || 'G').charAt(0).toUpperCase();
+
+                          return (
+                            <div key={g.id} className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-primary">
+                                  {initial}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">
+                                    {g.name} ({g.role.toUpperCase()})
+                                  </span>
+                                  <span className="font-label-sm text-label-sm text-stone-muted mt-0.5">
+                                    {isYes ? 'RSVP: Attending' : isNo ? 'RSVP: Regrets' : `Invitation: ${g.invitationStatus}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center ${isYes
+                                  ? 'bg-tertiary-fixed/60 text-primary'
+                                  : isNo
+                                    ? 'bg-secondary-fixed/70 text-secondary'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                <span className="material-symbols-outlined text-[14px]">
+                                  {isYes ? 'check' : isNo ? 'close' : 'hourglass_top'}
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <>
+                          {/**/}
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-primary">
+                                H
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Lord & Lady Harrington (+1)</span>
+                                <span className="font-label-sm text-label-sm text-stone-muted mt-0.5">Truffle Risotto • 2 min ago</span>
+                              </div>
+                            </div>
+                            <span className="w-6 h-6 rounded-full bg-tertiary-fixed/60 flex items-center justify-center text-primary">
+                              <span className="material-symbols-outlined text-[14px]">check</span>
+                            </span>
+                          </div>
+                          {/**/}
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-primary">
+                                R
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Matteo & Sofia Rossi</span>
+                                <span className="font-label-sm text-label-sm text-stone-muted mt-0.5">Note: Gluten-Free • 1 hr ago</span>
+                              </div>
+                            </div>
+                            <span className="w-6 h-6 rounded-full bg-tertiary-fixed/60 flex items-center justify-center text-primary">
+                              <span className="material-symbols-outlined text-[14px]">check</span>
+                            </span>
+                          </div>
+                          {/**/}
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-ivory-highlight shadow-[0_1px_3px_rgba(30,26,24,0.03)]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center font-headline-sm text-headline-sm italic text-stone-muted">
+                                V
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Marcus Vance</span>
+                                <span className="font-label-sm text-label-sm text-stone-muted mt-0.5">Declined with regrets • 3 hrs ago</span>
+                              </div>
+                            </div>
+                            <span className="w-6 h-6 rounded-full bg-secondary-fixed/70 flex items-center justify-center text-secondary">
+                              <span className="material-symbols-outlined text-[14px]">close</span>
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {/**/}
+                  <div className="flex flex-col p-6 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
+                    <span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold mb-1">Actions</span>
+                    <h2 className="font-headline-sm text-headline-sm text-charcoal-ink mb-4">Concierge Shortcuts</h2>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/**/}
+                      <button onClick={() => setActiveTab("guests")} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
+                        <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
+                          <span className="material-symbols-outlined text-[18px]">forward_to_inbox</span>
+                        </div>
+                        <span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Send RSVP Reminder</span>
+                        <span className="font-label-sm text-label-sm text-stone-muted mt-1">18 pending guests</span>
+                      </button>
+                      {/**/}
+                      <button onClick={() => showToast("Seating chart designer will be available in the upcoming Atelier release.")} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
+                        <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
+                          <span className="material-symbols-outlined text-[18px]">table_restaurant</span>
+                        </div>
+                        <span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Seating Chart</span>
+                        <span className="font-label-sm text-label-sm text-stone-muted mt-1">22 tables mapped</span>
+                      </button>
+                      {/**/}
+                      <button onClick={() => showToast("Gallery media upload pipeline opened.")} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
+                        <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
+                          <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                        </div>
+                        <span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Upload Gallery</span>
+                        <span className="font-label-sm text-label-sm text-stone-muted mt-1">Moodboards & proofs</span>
+                      </button>
+                      {/**/}
+                      <button onClick={() => { window.print(); showToast("Exporting vendor run-sheet dossier..."); }} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
+                        <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
+                          <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                        </div>
+                        <span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Vendor Run-Sheet</span>
+                        <span className="font-label-sm text-label-sm text-stone-muted mt-1">Export dossier PDF</span>
+                      </button>
+                    </div>
+                  </div>
+                  {/**/}
+                  <div className="relative overflow-hidden p-6 rounded-2xl bg-charcoal-ink text-ivory-highlight shadow-[0_6px_24px_rgba(30,26,24,0.14)]">
+                    <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-gold-champagne/10 blur-xl pointer-events-none"></div>
+                    <div className="flex items-center gap-2 mb-3 text-gold-champagne font-label-sm text-label-sm uppercase tracking-widest">
+                      <span className="material-symbols-outlined text-[16px]">diamond</span>
+                      <span>Atelier Privé Concierge</span>
+                    </div>
+                    <h3 className="font-headline-sm text-headline-sm leading-snug mb-2">
+                      Need bespoke assistance for {partnerOne} & {partnerTwo}?
+                    </h3>
+                    <p className="font-body-sm text-body-sm text-surface-container-highest/80 leading-relaxed mb-5">
+                      Your direct private wedding director is on standby in Milan for immediate on-site vendor escalations, custom boat charters, and Lake Como permissions.
+                    </p>
+                    <div className="flex items-center justify-between pt-2">
+                      <button onClick={() => setShowConciergeModal(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold-champagne text-on-primary-container font-label-md text-label-md uppercase tracking-wider hover:bg-gold-light transition-colors" type="button">
+                        <span className="material-symbols-outlined text-[16px]">call</span>
+                        <span>Call Concierge Desk</span>
+                      </button>
+                      <span className="font-label-sm text-label-sm text-gold-champagne">Direct Line: Active</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-<div className="flex flex-col">
-<span className="font-body-sm text-body-sm text-charcoal-ink font-medium leading-tight">Marcus Vance</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-0.5">Declined with regrets • 3 hrs ago</span>
-</div>
-</div>
-<span className="w-6 h-6 rounded-full bg-secondary-fixed/70 flex items-center justify-center text-secondary">
-<span className="material-symbols-outlined text-[14px]">close</span>
-</span>
-</div>
-</div>
-</div>
-{/**/}
-<div className="flex flex-col p-6 rounded-2xl bg-ivory-surface shadow-[0_2px_12px_-2px_rgba(74,18,26,0.04)]">
-<span className="font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold mb-1">Actions</span>
-<h2 className="font-headline-sm text-headline-sm text-charcoal-ink mb-4">Concierge Shortcuts</h2>
-<div className="grid grid-cols-2 gap-3">
-{/**/}
-<button onClick={() => router.push("/dashboard/guests")} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
-<div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
-<span className="material-symbols-outlined text-[18px]">forward_to_inbox</span>
-</div>
-<span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Send RSVP Reminder</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-1">18 pending guests</span>
-</button>
-{/**/}
-<button onClick={() => showToast("Seating chart designer will be available in the upcoming Atelier release.")} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
-<div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
-<span className="material-symbols-outlined text-[18px]">table_restaurant</span>
-</div>
-<span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Seating Chart</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-1">22 tables mapped</span>
-</button>
-{/**/}
-<button onClick={() => showToast("Gallery media upload pipeline opened.")} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
-<div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
-<span className="material-symbols-outlined text-[18px]">cloud_upload</span>
-</div>
-<span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Upload Gallery</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-1">Moodboards & proofs</span>
-</button>
-{/**/}
-<button onClick={() => { window.print(); showToast("Exporting vendor run-sheet dossier..."); }} className="group flex flex-col items-start p-3.5 rounded-xl bg-ivory-highlight hover:bg-surface-container transition-all text-left shadow-[0_1px_3px_rgba(30,26,24,0.02)]" type="button">
-<div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors mb-2.5">
-<span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-</div>
-<span className="font-body-sm text-body-sm text-charcoal-ink font-semibold leading-tight">Vendor Run-Sheet</span>
-<span className="font-label-sm text-label-sm text-stone-muted mt-1">Export dossier PDF</span>
-</button>
-</div>
-</div>
-{/**/}
-<div className="relative overflow-hidden p-6 rounded-2xl bg-charcoal-ink text-ivory-highlight shadow-[0_6px_24px_rgba(30,26,24,0.14)]">
-<div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-gold-champagne/10 blur-xl pointer-events-none"></div>
-<div className="flex items-center gap-2 mb-3 text-gold-champagne font-label-sm text-label-sm uppercase tracking-widest">
-<span className="material-symbols-outlined text-[16px]">diamond</span>
-<span>Atelier Privé Concierge</span>
-</div>
-<h3 className="font-headline-sm text-headline-sm leading-snug mb-2">
-          Need bespoke assistance for {partnerOne} & {partnerTwo}?
-        </h3>
-<p className="font-body-sm text-body-sm text-surface-container-highest/80 leading-relaxed mb-5">
-          Your direct private wedding director is on standby in Milan for immediate on-site vendor escalations, custom boat charters, and Lake Como permissions.
-        </p>
-<div className="flex items-center justify-between pt-2">
-<button onClick={() => setShowConciergeModal(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold-champagne text-on-primary-container font-label-md text-label-md uppercase tracking-wider hover:bg-gold-light transition-colors" type="button">
-<span className="material-symbols-outlined text-[16px]">call</span>
-<span>Call Concierge Desk</span>
-</button>
-<span className="font-label-sm text-label-sm text-gold-champagne">Direct Line: Active</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</main>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

@@ -62,6 +62,7 @@ class WeddingCreate(BaseModel):
 
 class WeddingUpdate(BaseModel):
     siteTitle: Optional[str] = Field(None, min_length=1, max_length=150)
+    slug: Optional[str] = Field(None, min_length=2, max_length=80, pattern=r"^[a-z0-9-]+$")
     partnerOne: Optional[str] = Field(None, min_length=1, max_length=100)
     partnerTwo: Optional[str] = Field(None, min_length=1, max_length=100)
     weddingDate: Optional[str] = None

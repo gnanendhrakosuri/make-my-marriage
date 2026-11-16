@@ -206,3 +206,39 @@ async def update_guest(
         createdAt=guest.get("createdAt", now),
         updatedAt=guest.get("updatedAt", now),
     )
+
+
+@router.delete(
+    "/{guestId}",
+    status_code=status.HTTP_200_OK,
+    summary="Remove a guest and their associated invitations/rsvps",
+)
+async def delete_guest(
+    weddingId: str,
+    guestId: str,
+    current_user: dict = Depends(get_current_user_doc),
+    db=Depends(get_database),
+):
+    await verify_wedding_access(weddingId, current_user, db)
+
+    try:
+        g_oid = ObjectId(guestId)
+        guest = await db.guests.find_one({"_id": g_oid, "weddingId": weddingId})
+    except Exception:
+        guest = await db.guests.find_one({"_id": guestId, "weddingId": weddingId})
+
+    if not guest:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Guest not found.",
+        )
+
+    # Delete guest document
+    await db.guests.delete_one({"_id": guest["_id"]})
+
+    # Clean up or revoke associated invitations
+    await db.invitations.delete_many({"weddingId": weddingId, "guestId": str(guest["_id"])})
+    await db.rsvps.delete_many({"weddingId": weddingId, "guestId": str(guest["_id"])})
+
+    return {"success": True, "message": f"Guest '{guest.get('name')}' removed successfully."}
+

@@ -11,6 +11,7 @@ from app.schemas.wedding import (
     SubEventUpdate,
     WeddingCreate,
     WeddingResponse,
+    WeddingUpdate,
 )
 
 router = APIRouter(prefix="/weddings", tags=["weddings"])
@@ -188,6 +189,119 @@ async def get_wedding_by_id(
         events=events,
         createdAt=wedding.get("createdAt", datetime.now(timezone.utc)),
         updatedAt=wedding.get("updatedAt", datetime.now(timezone.utc)),
+    )
+
+
+@router.patch(
+    "/{weddingId}",
+    response_model=WeddingResponse,
+    summary="Update wedding celebration details",
+)
+async def update_wedding(
+    weddingId: str,
+    payload: WeddingUpdate,
+    current_user: dict = Depends(get_current_user_doc),
+    db=Depends(get_database),
+):
+    """
+    Updates wedding celebration details.
+    Requires manager or admin access to the wedding.
+    """
+    wedding = await verify_wedding_access(weddingId, current_user, db)
+    now = datetime.now(timezone.utc)
+
+    update_fields = {"updatedAt": now}
+
+    if payload.slug is not None:
+        sanitized_slug = payload.slug.strip().lower()
+        if sanitized_slug != wedding.get("slug"):
+            # Check for slug collision
+            existing = await db.weddings.find_one({"slug": sanitized_slug, "_id": {"$ne": wedding["_id"]}})
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"The vanity URL slug '{sanitized_slug}' is already reserved by another wedding.",
+                )
+            update_fields["slug"] = sanitized_slug
+
+    if payload.siteTitle is not None:
+        update_fields["siteTitle"] = payload.siteTitle.strip()
+    if payload.partnerOne is not None:
+        update_fields["partnerOne"] = payload.partnerOne.strip()
+    if payload.partnerTwo is not None:
+        update_fields["partnerTwo"] = payload.partnerTwo.strip()
+
+    # Keep coupleNames in sync if partners updated
+    p1 = update_fields.get("partnerOne", wedding.get("partnerOne", ""))
+    p2 = update_fields.get("partnerTwo", wedding.get("partnerTwo", ""))
+    if p1 or p2:
+        update_fields["coupleNames"] = [name for name in [p1, p2] if name]
+
+    if payload.weddingDate is not None:
+        update_fields["weddingDate"] = payload.weddingDate
+    if payload.welcomeStory is not None:
+        update_fields["welcomeStory"] = payload.welcomeStory.strip()
+    if payload.venueName is not None:
+        update_fields["venueName"] = payload.venueName.strip()
+    if payload.venueAddress is not None:
+        update_fields["venueAddress"] = payload.venueAddress.strip()
+    if payload.venueCity is not None:
+        update_fields["venueCity"] = payload.venueCity.strip()
+    if payload.venueCountry is not None:
+        update_fields["venueCountry"] = payload.venueCountry.strip()
+    if payload.timezone is not None:
+        update_fields["timezone"] = payload.timezone
+    if payload.coordinates is not None:
+        update_fields["coordinates"] = payload.coordinates
+    if payload.accommodationNotes is not None:
+        update_fields["accommodationNotes"] = payload.accommodationNotes
+    if payload.transportNotes is not None:
+        update_fields["transportNotes"] = payload.transportNotes
+    if payload.status is not None:
+        update_fields["status"] = payload.status
+
+    await db.weddings.update_one({"_id": wedding["_id"]}, {"$set": update_fields})
+    updated_wedding = await db.weddings.find_one({"_id": wedding["_id"]})
+
+    # Fetch sub-events
+    cursor = db.events.find({"weddingId": str(wedding["_id"])})
+    event_docs = await cursor.to_list(length=100)
+    events = [
+        SubEventResponse(
+            id=str(doc["_id"]),
+            title=doc.get("title", ""),
+            date=doc.get("date"),
+            startTime=doc.get("startTime"),
+            endTime=doc.get("endTime"),
+            location=doc.get("location"),
+            dressCode=doc.get("dressCode"),
+            isPublic=doc.get("isPublic", True),
+        )
+        for doc in event_docs
+    ]
+
+    return WeddingResponse(
+        id=str(updated_wedding["_id"]),
+        slug=updated_wedding.get("slug", "wedding"),
+        siteTitle=updated_wedding.get("siteTitle", "Our Wedding"),
+        coupleNames=updated_wedding.get("coupleNames", ["Couple"]),
+        partnerOne=updated_wedding.get("partnerOne", ""),
+        partnerTwo=updated_wedding.get("partnerTwo", ""),
+        weddingDate=updated_wedding.get("weddingDate"),
+        welcomeStory=updated_wedding.get("welcomeStory"),
+        venueName=updated_wedding.get("venueName"),
+        venueAddress=updated_wedding.get("venueAddress"),
+        venueCity=updated_wedding.get("venueCity"),
+        venueCountry=updated_wedding.get("venueCountry"),
+        timezone=updated_wedding.get("timezone", "UTC"),
+        coordinates=updated_wedding.get("coordinates"),
+        accommodationNotes=updated_wedding.get("accommodationNotes"),
+        transportNotes=updated_wedding.get("transportNotes"),
+        status=updated_wedding.get("status", "published"),
+        managerIds=[str(m) for m in updated_wedding.get("managerIds", [])],
+        events=events,
+        createdAt=updated_wedding.get("createdAt", datetime.now(timezone.utc)),
+        updatedAt=updated_wedding.get("updatedAt", datetime.now(timezone.utc)),
     )
 
 
