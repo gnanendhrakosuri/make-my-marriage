@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   title: "Make My Marriage — Bespoke Wedding Platform",
   description:
     "A private digital atelier for discerning couples, curated itineraries, bespoke stationery, and heartfelt guest experiences.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
