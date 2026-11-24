@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.auth import router as auth_router
 from app.api.v1.guests import router as guests_router
 from app.api.v1.invitations import router as invitations_router
+from app.api.v1.photos import router as photos_router
+from app.api.v1.public_gallery import router as public_gallery_router
 from app.api.v1.public_invitations import router as public_invitations_router
 from app.api.v1.public_weddings import router as public_weddings_router
 from app.api.v1.weddings import router as weddings_router
@@ -47,3 +49,5 @@ app.include_router(invitations_router, prefix="/api/v1")
 app.include_router(public_invitations_router, prefix="/api/v1")
 app.include_router(weddings_router, prefix="/api/v1")
 app.include_router(public_weddings_router, prefix="/api/v1")
+app.include_router(photos_router, prefix="/api/v1")
+app.include_router(public_gallery_router, prefix="/api/v1")

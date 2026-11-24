@@ -1,3 +1,4 @@
+from unittest.mock import patch
 import pytest
 from app.services.email import generate_invitation_html, generate_reminder_html, send_invitation_email
 
@@ -61,16 +62,18 @@ async def test_send_invitation_email_emulation(monkeypatch):
 @pytest.mark.asyncio
 async def test_send_invitation_email_resend_delivered():
     # Test with Resend's official deliverable test address
-    result = await send_invitation_email(
-        recipient_email="delivered@resend.dev",
-        guest_name="Test Guest",
-        couple_names=["Aria", "Leo"],
-        wedding_title="Grand Tuscan Union",
-        wedding_date="December 12, 2026",
-        venue_name="Borgo Santo Pietro",
-        invite_url="http://localhost:3000/w/aria-leo/invite/token_999",
-    )
+    with patch("resend.Emails.send") as mock_send:
+        mock_send.return_value = {"id": "re_mock_12345"}
+        result = await send_invitation_email(
+            recipient_email="delivered@resend.dev",
+            guest_name="Test Guest",
+            couple_names=["Aria", "Leo"],
+            wedding_title="Grand Tuscan Union",
+            wedding_date="December 12, 2026",
+            venue_name="Borgo Santo Pietro",
+            invite_url="http://localhost:3000/w/aria-leo/invite/token_999",
+        )
 
-    assert result["success"] is True
-    assert result["status"] == "sent"
-    assert result["providerMessageId"] is not None
+        assert result["success"] is True
+        assert result["status"] == "sent"
+        assert result["providerMessageId"] == "re_mock_12345"

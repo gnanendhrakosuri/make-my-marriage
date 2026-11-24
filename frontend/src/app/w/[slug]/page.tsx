@@ -198,6 +198,12 @@ export default function PublicWeddingWebsitePage() {
               Villa & Map
             </Link>
             <Link
+              href={`/w/${wedding.slug}/gallery`}
+              className="text-xs uppercase tracking-widest font-semibold text-[#4A121A] hover:text-[#B38E46] transition-colors"
+            >
+              Gallery
+            </Link>
+            <Link
               href="/"
               className="px-4 py-2 rounded-full border border-[#C5A059]/30 bg-[#FFFDF9] hover:bg-[#F7F3EB] text-[11px] uppercase tracking-widest font-semibold text-[#4A121A] transition-colors shadow-sm"
             >
@@ -233,7 +239,7 @@ export default function PublicWeddingWebsitePage() {
           </p>
 
           {/* Wedding Date & Countdown Pill */}
-          <div className="inline-flex flex-wrap items-center justify-center gap-3 px-6 py-3 rounded-full bg-[#FFFDF9] border border-[#C5A059]/30 shadow-md mb-10">
+          <div className="inline-flex flex-wrap items-center justify-center gap-3 px-6 py-3 rounded-full bg-[#FFFDF9] border border-[#C5A059]/30 shadow-md mb-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#1E1A18]">
               <span className="material-symbols-outlined text-[18px] text-[#C5A059]">calendar_today</span>
               <span>{formattedDate}</span>
@@ -246,6 +252,16 @@ export default function PublicWeddingWebsitePage() {
                 </span>
               </>
             )}
+          </div>
+
+          <div className="mb-10">
+            <Link
+              href={`/w/${wedding.slug}/gallery`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#4A121A] text-[#FFFDF9] text-xs uppercase tracking-widest font-semibold hover:bg-[#360B12] transition-colors shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[16px]">photo_library</span>
+              <span>View Wedding Gallery</span>
+            </Link>
           </div>
 
           {/* Welcome Story */}

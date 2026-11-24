@@ -30,6 +30,23 @@ class Settings(BaseSettings):
     email_from: str = "Make My Marriage <onboarding@resend.dev>"
     frontend_url: str = "http://localhost:3000"
 
+    # Cloudflare R2 Media Storage
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket_name: str = "make-my-marriage-media"
+    r2_endpoint_url: str = ""
+    r2_public_domain: str = ""
+
+    @property
+    def effective_r2_endpoint(self) -> str:
+        """Construct the standard Cloudflare R2 S3 API endpoint if not explicitly provided."""
+        if self.r2_endpoint_url:
+            return self.r2_endpoint_url
+        if self.r2_account_id:
+            return f"https://{self.r2_account_id}.r2.cloudflarestorage.com"
+        return ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Return CORS origins as a list, trimming whitespace."""

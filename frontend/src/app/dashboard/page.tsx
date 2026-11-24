@@ -9,6 +9,7 @@ import GuestManagementTab from '@/components/dashboard/GuestManagementTab';
 import InvitationsRsvpTab from '@/components/dashboard/InvitationsRsvpTab';
 import WeddingDetailsTab from '@/components/dashboard/WeddingDetailsTab';
 import SettingsTab from '@/components/dashboard/SettingsTab';
+import PhotoGalleryTab from '@/components/dashboard/PhotoGalleryTab';
 
 interface WeddingEvent {
   id: string;
@@ -59,8 +60,8 @@ interface TaskItem {
   completed: boolean;
 }
 
-type TabType = 'dashboard' | 'wedding-details' | 'guests' | 'invitations' | 'settings';
-const VALID_TABS: TabType[] = ['dashboard', 'wedding-details', 'guests', 'invitations', 'settings'];
+type TabType = 'dashboard' | 'wedding-details' | 'guests' | 'invitations' | 'gallery' | 'settings';
+const VALID_TABS: TabType[] = ['dashboard', 'wedding-details', 'guests', 'invitations', 'gallery', 'settings'];
 
 export default function DashboardPage() {
   return (
@@ -861,6 +862,14 @@ function DashboardContent() {
                 <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
               </button>
               <button
+                onClick={() => setActiveTab('gallery')}
+                title="Photo Gallery"
+                className={`p-2.5 rounded-lg transition-colors ${activeTab === 'gallery' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">photo_library</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('settings')}
                 title="Atelier Settings"
                 className={`p-2.5 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-burgundy-velvet text-on-primary' : 'text-on-surface-variant hover:bg-surface-container'
@@ -904,8 +913,8 @@ function DashboardContent() {
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'dashboard'
-                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
-                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                 }`}
               type="button"
             >
@@ -915,8 +924,8 @@ function DashboardContent() {
             <button
               onClick={() => setActiveTab('wedding-details')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'wedding-details'
-                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
-                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                 }`}
               type="button"
             >
@@ -940,8 +949,8 @@ function DashboardContent() {
             <button
               onClick={() => setActiveTab('guests')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'guests'
-                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
-                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                 }`}
               type="button"
             >
@@ -951,8 +960,8 @@ function DashboardContent() {
             <button
               onClick={() => setActiveTab('invitations')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'invitations'
-                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
-                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                 }`}
               type="button"
             >
@@ -983,8 +992,11 @@ function DashboardContent() {
               <span className="font-body-sm text-body-sm tracking-normal">Expense Tracker</span>
             </button>
             <button
-              onClick={() => showToast("Photo Gallery module loaded.")}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all text-left"
+              onClick={() => setActiveTab('gallery')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'gallery'
+                ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                }`}
               data-path="photo-gallery"
               type="button"
             >
@@ -994,8 +1006,8 @@ function DashboardContent() {
             <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all text-left ${activeTab === 'settings'
-                  ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
-                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                ? 'bg-burgundy-velvet text-on-primary font-medium shadow-[0_4px_12px_-2px_rgba(74,18,26,0.15)]'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                 }`}
               type="button"
             >
@@ -1116,6 +1128,14 @@ function DashboardContent() {
 
           {activeTab === 'settings' && (
             <SettingsTab weddingId={weddingId} />
+          )}
+
+          {activeTab === 'gallery' && (
+            <PhotoGalleryTab
+              weddingId={weddingId}
+              weddingSlug={wedding?.slug}
+              showToast={showToast}
+            />
           )}
 
           {activeTab === 'dashboard' && (
@@ -1342,8 +1362,8 @@ function DashboardContent() {
                           <div
                             key={ev.id}
                             className={`relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl transition-all hover:shadow-md ${ev.isPrimary
-                                ? "bg-surface-container-lowest shadow-[0_2px_8px_-1px_rgba(74,18,26,0.06)]"
-                                : "bg-ivory-highlight shadow-[0_1px_4px_rgba(30,26,24,0.03)]"
+                              ? "bg-surface-container-lowest shadow-[0_2px_8px_-1px_rgba(74,18,26,0.06)]"
+                              : "bg-ivory-highlight shadow-[0_1px_4px_rgba(30,26,24,0.03)]"
                               }`}
                           >
                             <span
@@ -1512,10 +1532,10 @@ function DashboardContent() {
                                 </div>
                               </div>
                               <span className={`w-6 h-6 rounded-full flex items-center justify-center ${isYes
-                                  ? 'bg-tertiary-fixed/60 text-primary'
-                                  : isNo
-                                    ? 'bg-secondary-fixed/70 text-secondary'
-                                    : 'bg-amber-100 text-amber-800'
+                                ? 'bg-tertiary-fixed/60 text-primary'
+                                : isNo
+                                  ? 'bg-secondary-fixed/70 text-secondary'
+                                  : 'bg-amber-100 text-amber-800'
                                 }`}>
                                 <span className="material-symbols-outlined text-[14px]">
                                   {isYes ? 'check' : isNo ? 'close' : 'hourglass_top'}

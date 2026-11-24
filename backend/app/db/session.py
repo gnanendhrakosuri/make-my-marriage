@@ -37,6 +37,14 @@ async def init_db(client: AsyncMongoClient) -> None:
     await db.events.create_index("weddingId")
     await db.events.create_index([("weddingId", 1), ("isPublic", 1), ("date", 1)])
 
+    # Photo Albums & Media
+    await db.photoAlbums.create_index("weddingId")
+    await db.photoAlbums.create_index([("weddingId", 1), ("createdAt", -1)])
+    await db.photos.create_index("weddingId")
+    await db.photos.create_index([("weddingId", 1), ("albumId", 1)])
+    await db.photos.create_index([("albumId", 1), ("createdAt", -1)])
+    await db.photos.create_index("storageObjectKey", unique=True)
+
     import os
     env = os.getenv("ENVIRONMENT", "development").lower()
     seed_demo = os.getenv("SEED_DEMO_USERS", "true" if env != "production" else "false").lower() == "true"

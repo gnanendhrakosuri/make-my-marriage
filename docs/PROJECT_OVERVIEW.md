@@ -67,7 +67,7 @@ Make My Marriage is explicitly a **reusable multi-wedding platform**, not a sing
 | **RSVP Management** | Token-authorized RSVP confirmation (`/w/[slug]/invite/[token]`) enabling one-click Yes/No responses without login, dietary preferences, and live dashboard sync. | **Implemented & Verified** (Dynamic `/w/[slug]/invite/[token]` route and `/api/v1/public/invitations/{token}` endpoints) |
 | **Public Wedding Website** | Dynamic public vanity portal (`/w/[slug]`) showcasing couple story, countdown, full multi-event itinerary, venue address, and RSVP CTA. | **Implemented & Verified** (`frontend/src/app/w/[slug]/page.tsx` and `backend/app/api/v1/public_weddings.py`) |
 | **QR Code Generation** | Dynamic generation of QR codes directing guests to the public wedding website URL (`/w/[slug]`). | **Planned** (Library selection pending) |
-| **Private Photo Gallery** | Secure album-based photo display backed by Google Cloud Storage, accessed strictly via short-lived signed URLs. | **Blocked** (GCS bucket and signing service pending credentials) |
+| **Private Photo Gallery** | Secure album-based photo display backed by Cloudflare R2 object storage, accessed via temporary signed URLs with token-gated access for private albums. | **Implemented & Verified** (Cloudflare R2 Boto3 service in `storage.py`, manager endpoints in `photos.py`, public gallery in `public_gallery.py`, and `/w/[slug]/gallery` frontend) |
 | **Livestream Integration** | Optional embed or external redirect link (e.g., YouTube Live) for remote wedding attendees. | **Planned** (Data schema ready; UI pending) |
 | **Authentication & Accounts** | Multi-role user registration (`/signup`), credential authentication (`/login`), session verification (`/api/v1/auth/me`), password recovery, and secure logout across all pages. | **Implemented & Verified** (PBKDF2-HMAC-SHA256, HMAC tokens, reactive `AuthContext`, and split-screen UI) |
 
@@ -223,9 +223,9 @@ graph TD
    - Backend verifies token hash and wedding scope, returning event details.
    - Guest submits RSVP (`POST /api/v1/invitations/rsvp`), updating the database.
 
-3. **Private Photo Gallery Flow (Planned):**
-   - Manager uploads photos: Backend issues short-lived pre-signed GCS upload URL; client uploads binary directly to GCS; backend registers object metadata.
-   - Guest accesses `/w/[slug]/gallery`: Backend verifies guest invitation token; if valid, backend issues short-lived pre-signed GCS download URLs expiring within minutes.
+3. **Private Photo Gallery Flow:**
+   - Manager uploads photos: In `PhotoGalleryTab.tsx`, manager selects images; backend validates MIME type and 25MB size limit, streams bytes directly to Cloudflare R2, registers metadata in MongoDB Atlas `photos` collection, and updates `photoAlbums.updatedAt`.
+   - Guest accesses `/w/[slug]/gallery`: Public albums are open to all visitors. For private albums, backend resolves token from `?token=...` or `X-Invitation-Token` header, checks SHA-256 hash against unrevoked invitations in `invitations` collection, and issues temporary presigned Cloudflare R2 URLs expiring in 1 hour.
 
 ---
 
